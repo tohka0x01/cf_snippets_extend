@@ -1,7 +1,7 @@
 # CF-Snippets-Extend
 
 > 一个功能强大的 Cloudflare Workers 代理管理工具，集成 ProxyIP、全局出站、CFIP 管理和订阅生成功能
-> 本项目为老王的Snippets脚本功能扩展，需要先部署老王的，再部署这个
+> 本项目为老王的Snippets/Worker脚本功能扩展，需要先部署老王的Snippets/Worker，再部署这个
 
 ## 📢 致谢声明
 
@@ -194,7 +194,7 @@
 
 ## 📖 使用指南
 
-### 0. 快速开始：导入初始数据（推荐）
+### 0. 快速开始：导入初始数据（推荐 也可以跳过这步自己加CFIP、ProxyIP、全局出站）
 
 如果你是第一次使用，可以先导入项目提供的初始数据快速体验：
 
@@ -257,7 +257,7 @@
 进入 **订阅生成** 标签页：
 
 1. 填写 **UUID**（可使用在线生成器：https://www.uuidgenerator.net/）
-2. 填写 **Snippets 域名**（你的 Workers 域名，例如：`snippets-ext.你的子域.workers.dev`）
+2. 填写 **Snippets/Worker 域名**（你的 Workers 域名，例如：`snippets-ext.你的子域.workers.dev`）
 3. 填写 **Path**（默认：`/?ed=2560`）
 4. 点击 **🔄 刷新订阅**
 
@@ -370,7 +370,7 @@ icook.hk#优选域名
 
 ### Q3：订阅生成后无法使用？
 - 确认 UUID 格式正确
-- 确认 Snippets 域名填写正确（不要带 `https://`）
+- 确认 Snippets/Worker 域名填写正确（不要带 `https://`）
 - 确认至少添加了一个启用的 CFIP
 
 ### Q4：如何修改 API Key？
