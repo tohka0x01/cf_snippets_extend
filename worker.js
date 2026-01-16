@@ -150,16 +150,16 @@ Star
 <div style="display:flex;gap:8px;flex-shrink:0"><button class="btn btn-success btn-sm" onclick="exportData()">📤 导出</button><button class="btn btn-primary btn-sm" onclick="importData()">📥 导入</button><button class="btn btn-danger btn-sm" onclick="logout()">退出</button></div>
 </div>
 <div class="tabs">
-<button class="tab active" onclick="switchTab('proxyip',this)">ProxyIP</button>
+<button class="tab active" onclick="switchTab('proxyip',this)">ProxyIP(反代IP)</button>
 <button class="tab" onclick="switchTab('outbound',this)">全局出站</button>
-<button class="tab" onclick="switchTab('cfip',this)">CFIP</button>
+<button class="tab" onclick="switchTab('cfip',this)">CFIP(优选域名)</button>
 <button class="tab" onclick="switchTab('vlessSubscribe',this)">订阅生成VLESS</button>
 <button class="tab" onclick="switchTab('ssSubscribe',this)">订阅生成SS</button>
 </div>
 
 <div id="proxyipPanel" class="panel">
 <div class="panel-header">
-<h2>ProxyIP 管理</h2>
+<h2>ProxyIP(反代IP) 管理</h2>
 <div style="display:flex;gap:8px">
 <button class="btn btn-primary btn-sm" onclick="showBatchModal('proxyip')">+ 添加</button>
 <button class="btn btn-success btn-sm" onclick="batchEnable('proxyip',true)">✓ 批量启用</button>
@@ -168,7 +168,8 @@ Star
 </div>
 </div>
 <div style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
-<strong>💡 说明：</strong>ProxyIP 用于普通 IP/域名代理，不支持 SOCKS5/HTTP 协议。如需添加 SOCKS5/HTTP 代理，请使用"全局出站"功能。
+<strong>💡 说明：</strong>ProxyIP(反代IP) 用于普通 IP/域名代理，不支持 SOCKS5/HTTP 协议。如需添加 SOCKS5/HTTP 代理，请使用"全局出站"功能。<br>
+<strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 优选域名数量。<strong style="color:#f14668">不添加反代IP的话，不会生成原生节点。</strong>
 </div>
 <table class="table"><thead><tr><th><input type="checkbox" id="proxyipCheckAll" onchange="checkAll('proxyip',this.checked)"></th><th>ID</th><th>地址</th><th>备注</th><th>状态</th><th>操作</th></tr></thead><tbody id="proxyipTable"></tbody></table>
 </div>
@@ -200,13 +201,17 @@ Star
 
 <div id="cfipPanel" class="panel hidden">
 <div class="panel-header">
-<h2>CFIP 管理</h2>
+<h2>CFIP(优选域名) 管理</h2>
 <div style="display:flex;gap:8px">
 <button class="btn btn-primary btn-sm" onclick="showBatchModal('cfip')">+ 添加</button>
 <button class="btn btn-success btn-sm" onclick="batchEnable('cfip',true)">✓ 批量启用</button>
 <button class="btn btn-warning btn-sm" onclick="batchEnable('cfip',false)">✗ 批量禁用</button>
 <button class="btn btn-danger btn-sm" onclick="batchDelete('cfip')">🗑️ 删除</button>
 </div>
+</div>
+<div style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
+<strong>💡 说明：</strong>CFIP(优选域名) 用于配置 Cloudflare 优选 IP 或域名，作为节点的连接地址。<br>
+<strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 优选域名数量。
 </div>
 <table class="table"><thead><tr><th><input type="checkbox" id="cfipCheckAll" onchange="checkAll('cfip',this.checked)"></th><th>ID</th><th>地址</th><th>端口</th><th>备注</th><th>状态</th><th>操作</th></tr></thead><tbody id="cfipTable"></tbody></table>
 </div>
@@ -819,7 +824,7 @@ function showModal(type,id=null,addr='',remark='',port=443){
 modalType=type;
 editId=id;
 const isEdit=id!==null;
-const titles={'proxyip':'ProxyIP','outbound':'全局出站','cfip':'CFIP'};
+const titles={'proxyip':'ProxyIP(反代IP)','outbound':'全局出站','cfip':'CFIP(优选域名)'};
 document.getElementById('modalTitle').textContent=(isEdit?'编辑':'添加')+titles[type];
 if(type==='proxyip'){
 document.getElementById('modalBody').innerHTML=\`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="\${addr}" placeholder="IP/域名"></div>
@@ -1149,7 +1154,7 @@ document.querySelectorAll('.'+className).forEach(cb=>cb.checked=checked);
 let batchType='';
 function showBatchModal(type){
 batchType=type;
-const titles={'proxyip':'ProxyIP','outbound':'全局出站','cfip':'CFIP'};
+const titles={'proxyip':'ProxyIP(反代IP)','outbound':'全局出站','cfip':'CFIP(优选域名)'};
 document.getElementById('batchModalTitle').textContent='批量添加 '+titles[type];
 document.getElementById('batchInput').value='';
 document.getElementById('batchAlert').innerHTML='';
