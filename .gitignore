@@ -1,5 +1,19 @@
-wrangler.json
 提示词.txt
-.wrangler/
 .idea/
-argo/
+
+
+# Wrangler 配置文件（包含敏感信息）
+wrangler.json
+
+# Wrangler 生成的文件
+.wrangler/
+node_modules/
+dist/
+
+# 环境变量文件
+.env
+.env.local
+.dev.vars
+
+# 日志文件
+*.log

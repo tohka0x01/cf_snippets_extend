@@ -1,0 +1,11 @@
+{
+  "name": "asub",
+  "main": "worker.js",
+  "compatibility_date": "2024-01-01",
+  "vars": {
+    "UUID": "f8e7d6c5-b4a3-9281-7065-fedcba098765",
+    "ARGO_DOMAIN": "my-argo-tunnel-xyz789.trycloudflare.com",
+    "SNIPPETS_API_URL": "https://snippets-api.example.workers.dev",
+    "SNIPPETS_API_KEY": "example_api_key_AbCdEfGh123456789"
+  }
+}

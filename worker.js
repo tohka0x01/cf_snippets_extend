@@ -1157,6 +1157,15 @@ export default {
             return handleLogin(request, env);
         }
 
+        // 内部 API - 使用 env.API_KEY 直接验证（供其他 Worker 调用）
+        if (path === '/api/internal/cfip' && method === 'GET') {
+            const internalKey = request.headers.get('X-Internal-Key') || url.searchParams.get('key');
+            if (internalKey === env.API_KEY) {
+                return handleGetCFIPs(env.DB);
+            }
+            return json({ error: 'Invalid Internal Key' }, 401);
+        }
+
         // 需要认证的 API
         const apiKey = request.headers.get('X-API-Key') || url.searchParams.get('apikey');
         if (!apiKey) return json({ error: 'Missing API Key' }, 401);
