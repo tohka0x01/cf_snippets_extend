@@ -68,6 +68,7 @@
 ### 全局出站管理
 ![全局出站管理](screenshots/outbound.png)
 > 管理 SOCKS5/HTTP 代理，支持测速和出站检测
+![全局出站管理-卡片样式](screenshots/outbound-card.png)
 
 ### 出站详细信息
 ![出站详细信息](screenshots/exit-detail.png)
