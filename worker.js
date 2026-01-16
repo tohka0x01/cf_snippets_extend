@@ -89,6 +89,36 @@ input:checked+.slider:before{transform:translateX(20px)}
 .card-latency.unknown{color:#999;font-size:14px}
 .card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .card-actions .btn{flex:1;min-width:70px}
+.exit-link{color:#667eea;text-decoration:underline;cursor:pointer;transition:all .2s}
+.exit-link:hover{color:#5568d3;text-decoration:underline;font-weight:600}
+@media (max-width:768px){
+.container{padding:10px}
+.header{flex-direction:column;gap:12px;align-items:stretch}
+.header h1{font-size:20px;text-align:center}
+.header>div{justify-content:center;flex-wrap:wrap}
+.tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+.tab{flex-shrink:0}
+.panel{padding:16px}
+.panel-header{flex-direction:column;gap:12px;align-items:stretch}
+.panel-header h2{font-size:16px;text-align:center}
+.panel-header>div{justify-content:center}
+.table{font-size:12px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table thead{display:none}
+.table tbody{display:block}
+.table tr{display:block;margin-bottom:12px;border:1px solid #e1e8ed;border-radius:8px;padding:8px;background:#fff}
+.table td{display:block;text-align:left!important;padding:6px 8px;border:none}
+.table td:before{content:attr(data-label);font-weight:600;display:inline-block;width:80px;color:#667eea}
+.table td:first-child{border-top-left-radius:8px;border-top-right-radius:8px}
+.table td:last-child{border-bottom-left-radius:8px;border-bottom-right-radius:8px}
+.actions{justify-content:flex-start;flex-wrap:wrap}
+.btn-sm{font-size:12px;padding:6px 12px}
+.card-grid{grid-template-columns:1fr;gap:12px}
+.modal-content,.modal-content-large{width:95%;max-width:95%;margin:10px;padding:16px}
+.form-group label{font-size:14px}
+.form-group input,.form-group select,.form-group textarea{font-size:14px;padding:10px}
+.login-box{padding:24px;margin:10px}
+.result-box pre{font-size:11px;max-height:120px}
+}
 
 </style>
 </head>
@@ -397,12 +427,12 @@ async function loadProxyIPs(){
 const d=await api('/proxyip');
 if(d.success){
 document.getElementById('proxyipTable').innerHTML=d.data.map(i=>\`<tr id="proxy-\${i.id}">
-<td><input type="checkbox" class="proxyip-check" value="\${i.id}"></td>
-<td>\${i.id}</td>
-<td class="addr-cell">\${i.address}</td>
-<td>\${i.remark||'-'}</td>
-<td><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('proxyip',\${i.id},this.checked)"><span class="slider"></span></label></td>
-<td class="actions">
+<td data-label="选择"><input type="checkbox" class="proxyip-check" value="\${i.id}"></td>
+<td data-label="ID">\${i.id}</td>
+<td data-label="地址" class="addr-cell">\${i.address}</td>
+<td data-label="备注">\${i.remark||'-'}</td>
+<td data-label="状态"><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('proxyip',\${i.id},this.checked)"><span class="slider"></span></label></td>
+<td data-label="操作" class="actions">
 <button class="btn btn-warning btn-sm" onclick="editItem('proxyip',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}')">编辑</button>
 </td></tr>\`).join('');
 document.getElementById('proxyipCheckAll').checked=false;
@@ -425,15 +455,15 @@ exitInfo+=\` <span style="font-size:11px;color:#999">(\${checkTime})</span>\`;
 }
 }
 return \`<tr id="outbound-\${i.id}">
-<td><input type="checkbox" class="outbound-check" value="\${i.id}"></td>
-<td>\${i.id}</td>
-<td class="addr-cell" title="\${i.address}">\${maskAddress(i.address)}</td>
-<td><span class="badge badge-info">\${i.type}</span></td>
-<td id="exit-\${i.id}" style="cursor:pointer" onclick="showExitDetail(\${i.id})" title="点击查看详情">\${exitInfo}</td>
-<td>\${i.remark||'-'}</td>
-<td id="out-lat-\${i.id}" style="color:#999">-</td>
-<td><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('outbound',\${i.id},this.checked)"><span class="slider"></span></label></td>
-<td class="actions">
+<td data-label="选择"><input type="checkbox" class="outbound-check" value="\${i.id}"></td>
+<td data-label="ID">\${i.id}</td>
+<td data-label="地址" class="addr-cell" title="\${i.address}">\${maskAddress(i.address)}</td>
+<td data-label="类型"><span class="badge badge-info">\${i.type}</span></td>
+<td data-label="出站" id="exit-\${i.id}" class="exit-link" onclick="showExitDetail(\${i.id})" title="点击查看详情">\${exitInfo}</td>
+<td data-label="备注">\${i.remark||'-'}</td>
+<td data-label="延迟" id="out-lat-\${i.id}" style="color:#999">-</td>
+<td data-label="状态"><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('outbound',\${i.id},this.checked)"><span class="slider"></span></label></td>
+<td data-label="操作" class="actions">
 <button class="btn btn-success btn-sm" onclick="testSingleOutbound(\${i.id})">测速</button>
 <button class="btn btn-warning btn-sm" onclick="editItem('outbound',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}')">编辑</button>
 </td></tr>\`;
@@ -469,9 +499,9 @@ return \`<div class="outbound-card \${statusClass}" id="outbound-card-\${i.id}">
 <span>地址:</span>
 <span style="word-break:break-all;text-align:right">\${maskAddress(i.address)}</span>
 </div>
-<div class="card-info-row" style="cursor:pointer" onclick="showExitDetail(\${i.id})" title="点击查看详情">
+<div class="card-info-row">
 <span>出站:</span>
-<span id="exit-card-\${i.id}">\${exitInfo}</span>
+<span id="exit-card-\${i.id}" class="exit-link" onclick="showExitDetail(\${i.id})" title="点击查看详情">\${exitInfo}</span>
 </div>
 </div>
 <div class="card-latency unknown" id="out-lat-card-\${i.id}">未测速</div>
@@ -503,13 +533,13 @@ async function loadCFIPs(){
 const d=await api('/cfip');
 if(d.success){
 document.getElementById('cfipTable').innerHTML=d.data.map(i=>\`<tr>
-<td><input type="checkbox" class="cfip-check" value="\${i.id}"></td>
-<td>\${i.id}</td>
-<td>\${i.address}</td>
-<td>\${i.port}</td>
-<td>\${i.remark||'-'}</td>
-<td><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('cfip',\${i.id},this.checked)"><span class="slider"></span></label></td>
-<td class="actions">
+<td data-label="选择"><input type="checkbox" class="cfip-check" value="\${i.id}"></td>
+<td data-label="ID">\${i.id}</td>
+<td data-label="地址">\${i.address}</td>
+<td data-label="端口">\${i.port}</td>
+<td data-label="备注">\${i.remark||'-'}</td>
+<td data-label="状态"><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('cfip',\${i.id},this.checked)"><span class="slider"></span></label></td>
+<td data-label="操作" class="actions">
 <button class="btn btn-warning btn-sm" onclick="editItem('cfip',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}',\${i.port})">编辑</button>
 </td></tr>\`).join('');
 document.getElementById('cfipCheckAll').checked=false;
@@ -960,8 +990,17 @@ hideLoading();
 
 async function checkSingleExit(id){
 const exitCell=document.getElementById('exit-'+id);
-if(!exitCell)return;
+const exitCardCell=document.getElementById('exit-card-'+id);
+if(!exitCell&&!exitCardCell)return;
+
+// 更新加载状态
+if(exitCell){
 exitCell.innerHTML='<span style="display:inline-block;width:12px;height:12px;border:2px solid #667eea;border-top:2px solid transparent;border-radius:50%;animation:spin 0.6s linear infinite"></span>';
+}
+if(exitCardCell){
+exitCardCell.innerHTML='<span style="display:inline-block;width:12px;height:12px;border:2px solid #667eea;border-top:2px solid transparent;border-radius:50%;animation:spin 0.6s linear infinite"></span>';
+}
+
 try{
 const d=await api('/check-exit','POST',{id});
 console.log('检测结果:',d);
@@ -973,22 +1012,56 @@ const country=result.country||'';
 const city=result.city||'';
 const exitInfo=country&&city?country+'-'+city:(country||city||'未知');
 const checkTime=new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+// 更新列表视图
+if(exitCell){
 exitCell.innerHTML=\`\${exitInfo} <span style="font-size:11px;color:#999">(\${checkTime})</span>\`;
-exitCell.style.cursor='pointer';
+exitCell.className='exit-link';
+}
+// 更新卡片视图
+if(exitCardCell){
+exitCardCell.textContent=exitInfo;
+exitCardCell.className='exit-link';
+}
 }else{
+// 更新列表视图
+if(exitCell){
 exitCell.textContent='检测失败';
 exitCell.style.color='#f14668';
+exitCell.className='';
 exitCell.title=result.error||'未知错误';
+}
+// 更新卡片视图
+if(exitCardCell){
+exitCardCell.textContent='检测失败';
+exitCardCell.style.color='#f14668';
+exitCardCell.className='';
+}
 console.error('检测失败:',result.error);
 }
 }else{
+if(exitCell){
 exitCell.textContent='检测失败';
 exitCell.style.color='#f14668';
+exitCell.className='';
+}
+if(exitCardCell){
+exitCardCell.textContent='检测失败';
+exitCardCell.style.color='#f14668';
+exitCardCell.className='';
+}
 console.error('API返回错误:',d);
 }
 }catch(e){
+if(exitCell){
 exitCell.textContent='错误';
 exitCell.style.color='#f14668';
+exitCell.className='';
+}
+if(exitCardCell){
+exitCardCell.textContent='错误';
+exitCardCell.style.color='#f14668';
+exitCardCell.className='';
+}
 console.error('检测异常:',e);
 }
 }
@@ -1026,22 +1099,25 @@ const checkTime=new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit'
 // 更新列表视图
 if(exitCell){
 exitCell.innerHTML=\`\${exitInfo} <span style="font-size:11px;color:#999">(\${checkTime})</span>\`;
-exitCell.style.cursor='pointer';
+exitCell.className='exit-link';
 }
 // 更新卡片视图
 if(exitCardCell){
 exitCardCell.textContent=exitInfo;
+exitCardCell.className='exit-link';
 }
 }else{
 // 更新列表视图
 if(exitCell){
 exitCell.textContent='检测失败';
 exitCell.style.color='#f14668';
+exitCell.className='';
 }
 // 更新卡片视图
 if(exitCardCell){
 exitCardCell.textContent='检测失败';
 exitCardCell.style.color='#f14668';
+exitCardCell.className='';
 }
 }
 });
@@ -1054,10 +1130,12 @@ const exitCardCell=document.getElementById('exit-card-'+id);
 if(exitCell&&exitCell.innerHTML.includes('spin')){
 exitCell.textContent='-';
 exitCell.style.color='#999';
+exitCell.className='';
 }
 if(exitCardCell&&exitCardCell.innerHTML.includes('spin')){
 exitCardCell.textContent='未检测';
 exitCardCell.style.color='#999';
+exitCardCell.className='';
 }
 });
 }
