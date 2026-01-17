@@ -102,9 +102,12 @@ input:checked+.slider:before{transform:translateX(18px)}
 .tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;padding:8px 10px}
 .tab{flex-shrink:0;font-size:12px;padding:6px 12px}
 .panel{padding:12px}
-.panel-header{flex-direction:column;gap:8px;align-items:stretch}
+.panel-header{flex-direction:column;gap:6px;align-items:stretch}
 .panel-header h2{font-size:14px;text-align:center;margin-bottom:4px}
-.panel-header>div{justify-content:center;gap:4px}
+.panel-header>div{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;gap:6px!important;padding:4px 0!important;justify-content:flex-start!important;scrollbar-width:thin;width:100%}
+.panel-header>div::-webkit-scrollbar{height:4px}
+.panel-header>div::-webkit-scrollbar-thumb{background:#667eea;border-radius:2px}
+.panel-header .btn{font-size:12px!important;padding:6px 12px!important;white-space:nowrap!important;flex:0 0 auto!important;min-width:fit-content!important}
 .panel>div[style*="background:#e8f0fe"]{font-size:11px;padding:8px;margin-bottom:8px}
 #proxyipListView,#outboundListView,#cfipListView{display:none!important}
 #proxyipCardView,#outboundCardView,#cfipCardView{display:grid!important}
@@ -171,8 +174,8 @@ Star
 <h2>ProxyIP(反代IP) 管理</h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
 <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('proxyip')">➕ 添加</button>
-<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('proxyip',true)">✓ 批量启用</button>
-<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('proxyip',false)">✗ 批量禁用</button>
+<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('proxyip',true)">✓ 启用</button>
+<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('proxyip',false)">✗ 禁用</button>
 <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('proxyip')">🗑️ 删除</button>
 </div>
 </div>
@@ -192,8 +195,8 @@ Star
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
 <button id="toggleMaskBtn" class="btn btn-warning btn-sm" data-icon="�️" onclick="toggleAddressMask()">�️ 显示地址</button>
 <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('outbound')">➕ 添加</button>
-<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('outbound',true)">✓ 批量启用</button>
-<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('outbound',false)">✗ 批量禁用</button>
+<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('outbound',true)">✓ 启用</button>
+<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('outbound',false)">✗ 禁用</button>
 <button class="btn btn-success btn-sm" data-icon="🔍" onclick="testAllOutbounds()">🔍 全量测速</button>
 <button class="btn btn-primary btn-sm" data-icon="🌍" onclick="checkAllExits()">🌍 出站检测</button>
 <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('outbound')">🗑️ 删除</button>
@@ -215,8 +218,8 @@ Star
 <h2>CFIP(优选域名) 管理</h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
 <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('cfip')">➕ 添加</button>
-<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('cfip',true)">✓ 批量启用</button>
-<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('cfip',false)">✗ 批量禁用</button>
+<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('cfip',true)">✓ 启用</button>
+<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('cfip',false)">✗ 禁用</button>
 <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
 </div>
 </div>
