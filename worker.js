@@ -1221,8 +1221,15 @@ console.error('检测异常:',e);
 }
 
 async function checkAllExits(){
-// 获取所有勾选的checkbox
-const checkedBoxes=document.querySelectorAll('.outbound-check:checked');
+// 获取所有勾选的checkbox（只选择可见的）
+const checkedBoxes=Array.from(document.querySelectorAll('.outbound-check:checked')).filter(cb => {
+    let el = cb;
+    while (el) {
+        if (el.classList && el.classList.contains('hidden')) return false;
+        el = el.parentElement;
+    }
+    return true;
+});
 if(checkedBoxes.length===0)return alert('请先勾选要检测的出站代理');
 
 const ids=Array.from(checkedBoxes).map(cb=>parseInt(cb.value));
@@ -1551,7 +1558,15 @@ setTimeout(()=>closeBatchModal(),1500);
 
 async function batchEnable(type,enabled){
 const className=type==='proxyip'?'proxyip-check':type==='outbound'?'outbound-check':'cfip-check';
-const checks=document.querySelectorAll('.'+className+':checked');
+// 只选择可见的复选框（排除隐藏的视图）
+const checks=Array.from(document.querySelectorAll('.'+className+':checked')).filter(cb => {
+    let el = cb;
+    while (el) {
+        if (el.classList && el.classList.contains('hidden')) return false;
+        el = el.parentElement;
+    }
+    return true;
+});
 if(checks.length===0)return alert('请先选择要修改的项');
 
 if(!confirm(\`确定\${enabled?'启用':'禁用'}选中的 \${checks.length} 项？\`))return;
@@ -1576,7 +1591,15 @@ else await loadCFIPs();
 
 async function batchDelete(type){
 const className=type==='proxyip'?'proxyip-check':type==='outbound'?'outbound-check':'cfip-check';
-const checks=document.querySelectorAll('.'+className+':checked');
+// 只选择可见的复选框（排除隐藏的视图）
+const checks=Array.from(document.querySelectorAll('.'+className+':checked')).filter(cb => {
+    let el = cb;
+    while (el) {
+        if (el.classList && el.classList.contains('hidden')) return false;
+        el = el.parentElement;
+    }
+    return true;
+});
 if(checks.length===0)return alert('请先选择要删除的项');
 
 if(!confirm(\`确定删除选中的 \${checks.length} 项？\`))return;
