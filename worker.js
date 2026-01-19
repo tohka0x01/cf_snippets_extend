@@ -256,7 +256,9 @@ Star
 
 <div id="vlessResult" class="result-box hidden">
 <p><b>订阅地址:</b></p><pre id="vlessSubUrl"></pre><button class="btn btn-success btn-sm" onclick="copy('vlessSubUrl')">复制</button>
+<!-- Clash订阅地址已暂时注释，如需使用请取消注释
 <p style="margin-top:12px"><b>Clash 订阅地址:</b></p><pre id="vlessClashUrl"></pre><button class="btn btn-success btn-sm" onclick="copy('vlessClashUrl')">复制</button>
+-->
 <div style="margin-top:16px;padding:12px;background:#f7f9fc;border-radius:6px;font-size:12px;color:#666">
 <strong>📋 高级用法示例：</strong><br>
 <code style="display:block;margin:6px 0;padding:6px;background:#fff;border-radius:4px;word-break:break-all">订阅地址?proxyip=1,2,3</code>
@@ -290,7 +292,9 @@ Star
 
 <div id="ssResult" class="result-box hidden">
 <p><b>订阅地址:</b></p><pre id="ssSubUrl"></pre><button class="btn btn-success btn-sm" onclick="copy('ssSubUrl')">复制</button>
+<!-- Clash订阅地址已暂时注释，如需使用请取消注释
 <p style="margin-top:12px"><b>Clash 订阅地址:</b></p><pre id="ssClashUrl"></pre><button class="btn btn-success btn-sm" onclick="copy('ssClashUrl')">复制</button>
+-->
 <div style="margin-top:16px;padding:12px;background:#f7f9fc;border-radius:6px;font-size:12px;color:#666">
 <strong>📋 高级用法示例：</strong><br>
 <code style="display:block;margin:6px 0;padding:6px;background:#fff;border-radius:4px;word-break:break-all">订阅地址?proxyip=1,2,3</code>
@@ -470,9 +474,10 @@ document.getElementById('vlessDomainInput').value=d.data.snippets_domain||'';
 document.getElementById('vlessPathInput').value=d.data.proxy_path||'';
 if(d.data.uuid&&d.data.snippets_domain){
 const subUrl=location.origin+'/sub/'+d.data.uuid;
-const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
+// Clash订阅地址已暂时注释，如需使用请取消注释
+// const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
 document.getElementById('vlessSubUrl').textContent=subUrl;
-document.getElementById('vlessClashUrl').textContent=clashUrl;
+// document.getElementById('vlessClashUrl').textContent=clashUrl;
 document.getElementById('vlessResult').classList.remove('hidden');
 }
 }
@@ -486,9 +491,10 @@ document.getElementById('ssDomainInput').value=d.data.snippets_domain||'';
 document.getElementById('ssPathInput').value=d.data.proxy_path||'';
 if(d.data.password&&d.data.snippets_domain){
 const subUrl=location.origin+'/sub/ss/'+d.data.password;
-const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
+// Clash订阅地址已暂时注释，如需使用请取消注释
+// const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
 document.getElementById('ssSubUrl').textContent=subUrl;
-document.getElementById('ssClashUrl').textContent=clashUrl;
+// document.getElementById('ssClashUrl').textContent=clashUrl;
 document.getElementById('ssResult').classList.remove('hidden');
 }
 }
@@ -1026,9 +1032,10 @@ try{
 const d=await api('/subscribe/vless/generate','POST',{uuid,snippetsDomain:domain,proxyPath:path});
 if(d.success){
 const subUrl=location.origin+'/sub/'+uuid;
-const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
+// Clash订阅地址已暂时注释，如需使用请取消注释
+// const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
 document.getElementById('vlessSubUrl').textContent=subUrl;
-document.getElementById('vlessClashUrl').textContent=clashUrl;
+// document.getElementById('vlessClashUrl').textContent=clashUrl;
 document.getElementById('vlessResult').classList.remove('hidden');
 document.getElementById('vlessAlert').innerHTML='<div class="alert alert-success">保存成功，共'+d.data.count+'条节点</div>';
 }else{document.getElementById('vlessAlert').innerHTML='<div class="alert alert-error">'+d.error+'</div>'}
@@ -1049,9 +1056,10 @@ try{
 const d=await api('/subscribe/ss/generate','POST',{password,snippetsDomain:domain,proxyPath:path});
 if(d.success){
 const subUrl=location.origin+'/sub/ss/'+password;
-const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
+// Clash订阅地址已暂时注释，如需使用请取消注释
+// const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
 document.getElementById('ssSubUrl').textContent=subUrl;
-document.getElementById('ssClashUrl').textContent=clashUrl;
+// document.getElementById('ssClashUrl').textContent=clashUrl;
 document.getElementById('ssResult').classList.remove('hidden');
 document.getElementById('ssAlert').innerHTML='<div class="alert alert-success">保存成功，共'+d.data.count+'条节点</div>';
 }else{document.getElementById('ssAlert').innerHTML='<div class="alert alert-error">'+d.error+'</div>'}
