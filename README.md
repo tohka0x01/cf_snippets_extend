@@ -482,7 +482,7 @@ icook.hk#优选域名
 
 ### Q3：订阅生成后无法使用？
 - **VLESS 订阅**：
-  - 确认 UUID 格式正确（标准 UUID 格式）
+  - 确认 UUID 格式正确（标准 UUID 格式，并且是部署的老王的snip订阅的uuid）
   - 确认 Snippets/Worker 域名填写正确（不要带 `https://`）
   - 确认至少添加了一个启用的 CFIP
 - **SS 订阅**：
