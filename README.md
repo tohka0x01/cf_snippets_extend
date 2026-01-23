@@ -107,7 +107,7 @@
 1. 在左侧菜单找到 **Workers 和 Pages**，点击进入
 2. 切换到 **D1 SQL 数据库** 标签页
 3. 点击 **创建数据库** 按钮
-4. 数据库名称填写：`snippets-ext-db`
+4. 数据库名称填写：`snippets-manager-db`
 5. 点击 **创建** 按钮
 
 ![创建 D1 数据库](screenshots/create-d1-web.png)
@@ -148,7 +148,7 @@
 2. 找到 **绑定** 部分，点击 **添加**
 3. 选择 **D1 数据库**
 4. 变量名称填写：`DB`（必须是大写的 DB）
-5. D1 数据库选择：`snippets-ext-db`（步骤 2 创建的数据库）
+5. D1 数据库选择：`snippets-manager-db`（步骤 2 创建的数据库）
 6. 点击 **保存** 按钮
 
 ![绑定数据库](screenshots/bind-db-web.png)
