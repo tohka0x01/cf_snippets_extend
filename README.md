@@ -269,7 +269,7 @@
 进入 **订阅生成VLESS** 标签页：
 
 1. 填写 **UUID** : 使用已经部署的老王订阅的UUID
-2. 填写 **Snippets/Worker 域名**（你的 Workers 域名，例如：`snippets-manager.你的子域.workers.dev`）
+2. 填写 **Snippets/Worker 域名**: 使用已经部署的老王订阅的域名
 3. 填写 **Path**（默认：`/?ed=2560`）
 4. 点击 **💾 保存并生成订阅**
 
