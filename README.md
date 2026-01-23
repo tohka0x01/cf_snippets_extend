@@ -280,7 +280,7 @@
 #### Shadowsocks 订阅
 
 进入 **订阅生成SS** 标签页：
-
+如果使用substore的话需要注意，生成的SS订阅链接用substore转换为clash会丢数据，建议是先用老王的或者其他人的订阅转换转成clash订阅再加入到substore
 1. 填写 **密码 (Password)**（自定义密码）
 2. 填写 **Snippets/Worker 域名**（与 VLESS 相同）
 3. 填写 **Path**（可选，留空则使用密码作为路径）
