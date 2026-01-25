@@ -1807,6 +1807,11 @@ export default {
             return handleCheckExit(request, env.DB);
         }
 
+        // Telegram优选IP导入
+        if (path === '/api/telegram/import-cfip' && method === 'POST') {
+            return handleTelegramImportCFIP(request, env.DB);
+        }
+
         return json({ error: 'Not Found' }, 404);
     }
 };
@@ -2968,5 +2973,50 @@ async function handleTestOutbound(request, db) {
         return json({ success: true, results });
     } catch (error) {
         return json({ error: 'Test failed: ' + error.message }, 500);
+    }
+}
+
+// Telegram优选IP导入接口
+async function handleTelegramImportCFIP(request, db) {
+    try {
+        const { address, port = 443, remark, apiKey } = await request.json();
+        
+        // 验证API Key
+        if (!apiKey || apiKey !== request.headers.get('X-API-Key')) {
+            return json({ error: 'Invalid API Key' }, 401);
+        }
+        
+        // 验证必填字段
+        if (!address) {
+            return json({ error: '地址不能为空' }, 400);
+        }
+        
+        // 检查是否已存在
+        const existing = await db.prepare('SELECT id FROM cf_ips WHERE address = ? AND port = ?').bind(address, port).first();
+        if (existing) {
+            return json({ error: '该CFIP已存在', existingId: existing.id }, 409);
+        }
+        
+        // 获取当前最大排序值
+        const maxSort = await db.prepare('SELECT MAX(sort_order) as max FROM cf_ips').first();
+        const sortOrder = (maxSort?.max || 0) + 1;
+        
+        // 插入数据
+        const result = await db.prepare(
+            'INSERT INTO cf_ips (address, port, remark, enabled, sort_order, created_at) VALUES (?, ?, ?, 1, ?, datetime("now"))'
+        ).bind(address, port, remark || address, sortOrder).run();
+        
+        return json({ 
+            success: true, 
+            data: { 
+                id: result.meta.last_row_id,
+                address,
+                port,
+                remark: remark || address,
+                enabled: true
+            } 
+        });
+    } catch (error) {
+        return json({ error: 'Import failed: ' + error.message }, 500);
     }
 }
