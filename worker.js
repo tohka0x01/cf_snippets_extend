@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-g
 .tabs{display:flex;gap:10px;background:#fff;padding:10px;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
 .tab{padding:10px 20px;border:none;background:transparent;cursor:pointer;border-radius:8px;font-size:14px;color:#666;white-space:nowrap}
 .tab.active{background:#667eea;color:#fff}
-.panel{background:#fff;padding:24px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.panel{background:#fff;padding:24px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%}
 .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .panel-header h2{font-size:18px;color:#333}
 .table{width:100%;border-collapse:collapse}
@@ -415,6 +415,7 @@ btn.setAttribute('data-icon','📋');
 loadProxyIPs();
 loadOutbounds();
 loadCFIPs();
+loadArgoSubscribes();
 }
 
 function toggleAddressMask(){
@@ -542,6 +543,7 @@ async function loadArgoSubscribes(){
 const d=await api('/argo');
 if(!d.success)return;
 
+// 列表视图
 const tbody=document.getElementById('argoTable');
 tbody.innerHTML='';
 
@@ -577,6 +579,53 @@ tbody.innerHTML+=row;
 }
 
 document.getElementById('argoCheckAll').checked=false;
+
+// 卡片视图
+document.getElementById('argoCardView').innerHTML=d.data.map(i=>{
+const subUrl=\`\${location.origin}/sub/argo/\${i.token}\`;
+const statusClass=i.enabled?'online':'offline';
+const statusText=i.enabled?'已启用':'已禁用';
+const protocol=i.template_link.startsWith('vless://')?'VLESS':(i.template_link.startsWith('vmess://')?'VMess':'未知');
+return \`<div class="outbound-card \${statusClass}" id="argo-card-\${i.id}">
+<input type="checkbox" class="card-checkbox argo-check" value="\${i.id}">
+<div class="card-header">
+<div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
+<div class="card-title">\${i.remark||'ARGO-'+i.id}</div>
+<div style="font-size:11px;color:#999;margin-top:2px">ID: \${i.id} | 协议: <span class="badge badge-info">\${protocol}</span></div>
+</div>
+</div>
+<div class="card-info">
+<div class="card-info-row">
+<span style="color:#999;min-width:60px">模板链接</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">\${i.template_link}</span>
+</div>
+<div class="card-info-row">
+<span style="color:#999;min-width:60px">订阅地址</span>
+<div style="display:flex;gap:6px;align-items:center;min-width:0;flex:1">
+<code style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">\${subUrl}</code>
+<button class="btn btn-success btn-sm" onclick="copyText('\${subUrl}')" style="flex-shrink:0">📋</button>
+</div>
+</div>
+</div>
+<div class="card-actions">
+<div style="flex:1"></div>
+<span onclick="editArgo(\${i.id})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
+<label class="switch" style="margin:0;margin-left:12px">
+<input type="checkbox" \${i.enabled?'checked':''} onchange="toggleArgoEnable(\${i.id},this.checked)">
+<span class="slider"></span>
+</label>
+</div>
+</div>\`;
+}).join('');
+
+// 根据当前视图模式显示对应的视图
+if(globalViewMode==='card'){
+document.getElementById('argoListView').classList.add('hidden');
+document.getElementById('argoCardView').classList.remove('hidden');
+}else{
+document.getElementById('argoListView').classList.remove('hidden');
+document.getElementById('argoCardView').classList.add('hidden');
+}
 }
 
 function copyText(text){
@@ -2149,7 +2198,7 @@ async function handleAddArgoSubscribe(request, db) {
     if (!template_link) return json({ error: '模板链接不能为空' }, 400);
 
     // 生成随机token
-    const token = generateRandomToken(16);
+    const token = generateRandomToken(32);
 
     const r = await db.prepare(
         'INSERT INTO argo_subscribe (token, template_link, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
