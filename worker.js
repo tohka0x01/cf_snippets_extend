@@ -29,12 +29,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-g
 .btn-sm{padding:4px 10px;font-size:12px;white-space:nowrap}
 .btn-full{width:100%;padding:12px}
 .hidden{display:none!important}
-.header{background:#fff;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center}
+.header{background:#fff;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box}
 .header h1{color:#667eea;font-size:24px}
-.tabs{display:flex;gap:10px;background:#fff;padding:10px;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.tabs{display:flex;gap:10px;background:#fff;padding:10px;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%;box-sizing:border-box}
 .tab{padding:10px 20px;border:none;background:transparent;cursor:pointer;border-radius:8px;font-size:14px;color:#666;white-space:nowrap}
 .tab.active{background:#667eea;color:#fff}
-.panel{background:#fff;padding:24px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%}
+.panel{background:#fff;padding:20px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%;box-sizing:border-box}
 .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .panel-header h2{font-size:18px;color:#333}
 .table{width:100%;border-collapse:collapse}
@@ -101,7 +101,7 @@ input:checked+.slider:before{transform:translateX(18px)}
 #toggleGlobalViewBtn{display:none!important}
 .tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;padding:8px 10px}
 .tab{flex-shrink:0;font-size:12px;padding:6px 12px}
-.panel{padding:12px}
+.panel{padding:12px;background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
 .panel-header{flex-direction:column;gap:6px;align-items:stretch}
 .panel-header h2{font-size:14px;text-align:center;margin-bottom:4px}
 .panel-header>div{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;gap:6px!important;padding:4px 0!important;justify-content:flex-start!important;scrollbar-width:thin;width:100%}
@@ -109,8 +109,8 @@ input:checked+.slider:before{transform:translateX(18px)}
 .panel-header>div::-webkit-scrollbar-thumb{background:#667eea;border-radius:2px}
 .panel-header .btn{font-size:12px!important;padding:6px 12px!important;white-space:nowrap!important;flex:0 0 auto!important;min-width:fit-content!important}
 .panel>div[style*="background:#e8f0fe"]{font-size:11px;padding:8px;margin-bottom:8px}
-#proxyipListView,#outboundListView,#cfipListView{display:none!important}
-#proxyipCardView,#outboundCardView,#cfipCardView{display:grid!important}
+#proxyipListView,#outboundListView,#cfipListView,#argoListView{display:none!important}
+#proxyipCardView,#outboundCardView,#cfipCardView,#argoCardView{display:grid!important}
 .card-grid{grid-template-columns:1fr;gap:10px}
 .outbound-card{padding:10px}
 .card-title{font-size:14px}
@@ -305,7 +305,6 @@ Star
 </div>
 </div>
 </div>
-</div>
 
 <div id="argoPanel" class="panel hidden">
 <div class="panel-header">
@@ -319,9 +318,10 @@ Star
 </div>
 
 <div style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
-<strong>💡 说明：</strong>ARGO 优选订阅用于管理 VLESS/VMess 模板链接，系统会自动将模板中的"优选域名/IP:端口"替换为所有启用的 CFIP，生成多个优化节点。<br>
-<strong>📋 支持格式：</strong>VLESS 和 VMess 两种协议<br>
-<strong>📊 节点数量：</strong>每个模板会生成 N 个节点（N = 启用的 CFIP 数量）
+<strong>💡 说明：</strong><br>
+1、ARGO 优选订阅用于管理 VLESS/VMess 模板链接，系统会自动将模板中的"优选域名/IP:端口"替换为所有启用的 CFIP，生成多个优化节点。<br>
+2、支持 VLESS 和 VMess 两种协议。<br>
+3、节点数量：每个模板会生成 N 个节点（N = 启用的 CFIP 数量）。
 </div>
 
 <div id="argoListView">
@@ -342,6 +342,7 @@ Star
 </div>
 
 <div id="argoCardView" class="card-grid hidden"></div>
+</div>
 </div>
 
 <div id="addModal" class="modal hidden">
@@ -1260,35 +1261,35 @@ const html=\`
 <div style="flex:1;background:#e8f5e9;padding:20px;border-radius:8px">
 <h3 style="color:#2e7d32;margin:0 0 16px 0;text-align:center;font-size:18px">入口信息</h3>
 <div style="line-height:2.4;font-size:14px">
-<p><strong>IP地址：</strong>\${entryInfo?.ip||'-'}</p>
-<p><strong>网络爬虫：</strong>\${entryInfo?.is_crawler!==undefined?yesNo(entryInfo.is_crawler):'-'}</p>
-<p><strong>数据中心：</strong>\${entryInfo?.is_datacenter!==undefined?yesNo(entryInfo.is_datacenter):'-'}</p>
-<p><strong>Tor网络：</strong>\${entryInfo?.is_tor!==undefined?yesNo(entryInfo.is_tor):'-'}</p>
-<p><strong>代理：</strong>\${entryInfo?.is_proxy!==undefined?yesNo(entryInfo.is_proxy):'-'}</p>
-<p><strong>VPN：</strong>\${entryInfo?.is_vpn!==undefined?yesNo(entryInfo.is_vpn):'-'}</p>
-<p><strong>滥用行为：</strong>\${entryInfo?.is_abuser!==undefined?yesNo(entryInfo.is_abuser):'-'}</p>
-<p><strong>滥用风险评分：</strong>\${entryInfo?.abuse_score!==undefined?percent(entryInfo.abuse_score):'-'}</p>
-<p><strong>自治系统编号：</strong>\${entryInfo?.asn?.asn?'AS'+entryInfo.asn.asn:'-'}</p>
-<p><strong>所属组织：</strong>\${entryInfo?.asn?.org||'-'}</p>
-<p><strong>国家：</strong>\${entryInfo?.location?.country||'-'}</p>
-<p><strong>城市：</strong>\${entryInfo?.location?.city||'-'}</p>
+<p><strong>IP地址：</strong>\${entryInfo&&entryInfo.ip||'-'}</p>
+<p><strong>网络爬虫：</strong>\${entryInfo&&entryInfo.is_crawler!==undefined?yesNo(entryInfo.is_crawler):'-'}</p>
+<p><strong>数据中心：</strong>\${entryInfo&&entryInfo.is_datacenter!==undefined?yesNo(entryInfo.is_datacenter):'-'}</p>
+<p><strong>Tor网络：</strong>\${entryInfo&&entryInfo.is_tor!==undefined?yesNo(entryInfo.is_tor):'-'}</p>
+<p><strong>代理：</strong>\${entryInfo&&entryInfo.is_proxy!==undefined?yesNo(entryInfo.is_proxy):'-'}</p>
+<p><strong>VPN：</strong>\${entryInfo&&entryInfo.is_vpn!==undefined?yesNo(entryInfo.is_vpn):'-'}</p>
+<p><strong>滥用行为：</strong>\${entryInfo&&entryInfo.is_abuser!==undefined?yesNo(entryInfo.is_abuser):'-'}</p>
+<p><strong>滥用风险评分：</strong>\${entryInfo&&entryInfo.abuse_score!==undefined?percent(entryInfo.abuse_score):'-'}</p>
+<p><strong>自治系统编号：</strong>\${entryInfo&&entryInfo.asn&&entryInfo.asn.asn?'AS'+entryInfo.asn.asn:'-'}</p>
+<p><strong>所属组织：</strong>\${entryInfo&&entryInfo.asn&&entryInfo.asn.org||'-'}</p>
+<p><strong>国家：</strong>\${entryInfo&&entryInfo.location&&entryInfo.location.country||'-'}</p>
+<p><strong>城市：</strong>\${entryInfo&&entryInfo.location&&entryInfo.location.city||'-'}</p>
 </div>
 </div>
 <div style="flex:1;background:#e3f2fd;padding:20px;border-radius:8px">
 <h3 style="color:#1976d2;margin:0 0 16px 0;text-align:center;font-size:18px">出口信息</h3>
 <div style="line-height:2.4;font-size:14px">
-<p><strong>IP地址：</strong>\${exitInfo?.ip||'-'}</p>
-<p><strong>网络爬虫：</strong>\${exitInfo?.is_crawler!==undefined?yesNo(exitInfo.is_crawler):'-'}</p>
-<p><strong>数据中心：</strong>\${exitInfo?.is_datacenter!==undefined?yesNo(exitInfo.is_datacenter):'-'}</p>
-<p><strong>Tor网络：</strong>\${exitInfo?.is_tor!==undefined?yesNo(exitInfo.is_tor):'-'}</p>
-<p><strong>代理：</strong>\${exitInfo?.is_proxy!==undefined?yesNo(exitInfo.is_proxy):'-'}</p>
-<p><strong>VPN：</strong>\${exitInfo?.is_vpn!==undefined?yesNo(exitInfo.is_vpn):'-'}</p>
-<p><strong>滥用行为：</strong>\${exitInfo?.is_abuser!==undefined?yesNo(exitInfo.is_abuser):'-'}</p>
-<p><strong>滥用风险评分：</strong>\${exitInfo?.abuse_score!==undefined?percent(exitInfo.abuse_score):'-'}</p>
-<p><strong>自治系统编号：</strong>\${exitInfo?.asn?.asn?'AS'+exitInfo.asn.asn:'-'}</p>
-<p><strong>所属组织：</strong>\${exitInfo?.asn?.org||'-'}</p>
-<p><strong>国家：</strong>\${exitInfo?.location?.country||'-'}</p>
-<p><strong>城市：</strong>\${exitInfo?.location?.city||'-'}</p>
+<p><strong>IP地址：</strong>\${exitInfo&&exitInfo.ip||'-'}</p>
+<p><strong>网络爬虫：</strong>\${exitInfo&&exitInfo.is_crawler!==undefined?yesNo(exitInfo.is_crawler):'-'}</p>
+<p><strong>数据中心：</strong>\${exitInfo&&exitInfo.is_datacenter!==undefined?yesNo(exitInfo.is_datacenter):'-'}</p>
+<p><strong>Tor网络：</strong>\${exitInfo&&exitInfo.is_tor!==undefined?yesNo(exitInfo.is_tor):'-'}</p>
+<p><strong>代理：</strong>\${exitInfo&&exitInfo.is_proxy!==undefined?yesNo(exitInfo.is_proxy):'-'}</p>
+<p><strong>VPN：</strong>\${exitInfo&&exitInfo.is_vpn!==undefined?yesNo(exitInfo.is_vpn):'-'}</p>
+<p><strong>滥用行为：</strong>\${exitInfo&&exitInfo.is_abuser!==undefined?yesNo(exitInfo.is_abuser):'-'}</p>
+<p><strong>滥用风险评分：</strong>\${exitInfo&&exitInfo.abuse_score!==undefined?percent(exitInfo.abuse_score):'-'}</p>
+<p><strong>自治系统编号：</strong>\${exitInfo&&exitInfo.asn&&exitInfo.asn.asn?'AS'+exitInfo.asn.asn:'-'}</p>
+<p><strong>所属组织：</strong>\${exitInfo&&exitInfo.asn&&exitInfo.asn.org||'-'}</p>
+<p><strong>国家：</strong>\${exitInfo&&exitInfo.location&&exitInfo.location.country||'-'}</p>
+<p><strong>城市：</strong>\${exitInfo&&exitInfo.location&&exitInfo.location.city||'-'}</p>
 </div>
 </div>
 </div>
