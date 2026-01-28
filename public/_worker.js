@@ -856,6 +856,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     }
 
     const proxyPath = config.proxy_path || '/?ed=2560';
+    const configRemark = config.remark || 'VLESS';
 
     // 合并 ProxyIP 和 Outbound
     const allProxies = [...proxyips, ...outbounds];
@@ -867,7 +868,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         for (const cfip of cfips) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
-            const nodeName = (cfip.remark || host) + '-VLESS';
+            const nodeName = `${cfip.remark || host}-${configRemark}`;
             links.push(`vless://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
         }
     } else {
@@ -879,7 +880,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
 
                 const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
                 const cfipRemark = cfip.remark || host;
-                const nodeName = `${cfipRemark}-${proxyip.remark}-VLESS`;
+                const nodeName = `${cfipRemark}-${proxyip.remark}-${configRemark}`;
 
                 links.push(`vless://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
             }
@@ -948,6 +949,7 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
 
     const proxyPath = config.proxy_path || '/';
     const method = 'none';
+    const configRemark = config.remark || 'SS';
 
     // 合并 ProxyIP 和 Outbound
     const allProxies = [...proxyips, ...outbounds];
@@ -959,7 +961,7 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
             const port = cfip.port || 443;
-            const nodeName = (cfip.remark || host) + '-SS';
+            const nodeName = `${cfip.remark || host}-${configRemark}`;
 
             const ssConfig = `${method}:${password}`;
             const encodedConfig = btoa(ssConfig);
@@ -981,7 +983,7 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
                 const encodedPath = pathWithQuery.replace(/=/g, '%3D');
 
                 const cfipRemark = cfip.remark || host;
-                const nodeName = `${cfipRemark}-${proxyip.remark}-SS`;
+                const nodeName = `${cfipRemark}-${proxyip.remark}-${configRemark}`;
 
                 const ssConfig = `${method}:${password}`;
                 const encodedConfig = btoa(ssConfig);
