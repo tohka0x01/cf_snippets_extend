@@ -14,7 +14,7 @@ async function initDB(db) {
         CREATE TABLE IF NOT EXISTS proxy_ips (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS outbounds (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, exit_country TEXT, exit_city TEXT, exit_ip TEXT, exit_org TEXT, checked_at TEXT, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS cf_ips (id INTEGER PRIMARY KEY, address TEXT, port INTEGER DEFAULT 443, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS subscribe_config (id INTEGER PRIMARY KEY, uuid TEXT, snippets_domain TEXT, proxy_path TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS subscribe_config (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, uuid TEXT, snippets_domain TEXT, proxy_path TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS argo_subscribe (id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, template_link TEXT NOT NULL, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
     `).catch(() => { });
 
@@ -46,6 +46,32 @@ async function initDB(db) {
         }
     } catch (e) {
         console.error('Migration error:', e);
+    }
+
+    // 迁移旧的订阅配置到新表结构
+    try {
+        // 为旧表添加新列
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN type TEXT`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN remark TEXT`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN enabled INTEGER DEFAULT 1`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN sort_order INTEGER DEFAULT 0`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN created_at TEXT`).run().catch(() => { });
+
+        // 迁移 id=1 的 VLESS 配置
+        const vlessConfig = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
+        if (vlessConfig && !vlessConfig.type) {
+            await db.prepare('UPDATE subscribe_config SET type = ?, remark = ?, enabled = 1, sort_order = 0, created_at = datetime("now") WHERE id = 1')
+                .bind('vless', 'VLESS订阅-1').run();
+        }
+
+        // 迁移 id=2 的 SS 配置
+        const ssConfig = await db.prepare('SELECT * FROM subscribe_config WHERE id = 2').first();
+        if (ssConfig && !ssConfig.type) {
+            await db.prepare('UPDATE subscribe_config SET type = ?, remark = ?, enabled = 1, sort_order = 0, created_at = datetime("now") WHERE id = 2')
+                .bind('ss', 'SS订阅-1').run();
+        }
+    } catch (e) {
+        console.error('Subscribe config migration error:', e);
     }
 }
 
@@ -84,7 +110,10 @@ export default {
         // 公开订阅
         if (path.startsWith('/sub/')) {
             const parts = path.split('/');
-            if (parts[2] === 'ss' && parts[3]) {
+            if (parts[2] === 'config' && parts[3]) {
+                // 通过配置 ID 生成订阅: /sub/config/1
+                return handleSubscribeByConfigId(env.DB, parts[3], request.url);
+            } else if (parts[2] === 'ss' && parts[3]) {
                 // SS 订阅: /sub/ss/password
                 return handleSSSubscribe(env.DB, parts[3], request.url);
             } else if (parts[2] === 'argo' && parts[3]) {
@@ -181,7 +210,18 @@ export default {
             return handleBatchDeleteArgoSubscribe(request, env.DB);
         }
 
-        // 订阅生成 - VLESS
+        // 订阅配置管理
+        if (path === '/api/subscribe/config') {
+            if (method === 'GET') return handleGetSubscribeConfigs(env.DB, url.searchParams.get('type'));
+            if (method === 'POST') return handleAddSubscribeConfig(request, env.DB);
+        }
+        if (path.startsWith('/api/subscribe/config/')) {
+            const id = path.split('/')[4];
+            if (method === 'PUT') return handleUpdateSubscribeConfig(request, env.DB, id);
+            if (method === 'DELETE') return handleDeleteSubscribeConfig(env.DB, id);
+        }
+
+        // 订阅生成 - VLESS（兼容旧接口）
         if (path === '/api/subscribe/vless/config') {
             if (method === 'GET') return handleGetVlessConfig(env.DB);
         }
@@ -189,7 +229,7 @@ export default {
             if (method === 'POST') return handleGenerateVlessSubscribe(request, env.DB);
         }
 
-        // 订阅生成 - SS
+        // 订阅生成 - SS（兼容旧接口）
         if (path === '/api/subscribe/ss/config') {
             if (method === 'GET') return handleGetSSConfig(env.DB);
         }
@@ -540,6 +580,75 @@ function generateRandomToken(length = 16) {
 }
 
 // 订阅
+// 订阅配置 CRUD
+async function handleGetSubscribeConfigs(db, type) {
+    let query = 'SELECT * FROM subscribe_config';
+    const params = [];
+
+    if (type) {
+        query += ' WHERE type = ?';
+        params.push(type);
+    }
+
+    query += ' ORDER BY sort_order, id';
+
+    const { results } = await db.prepare(query).bind(...params).all();
+    return json({ success: true, data: results });
+}
+
+async function handleAddSubscribeConfig(request, db) {
+    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0 } = await request.json();
+
+    if (!type || !uuid || !snippetsDomain) {
+        return json({ error: '类型、UUID/密码和域名不能为空' }, 400);
+    }
+
+    if (type !== 'vless' && type !== 'ss') {
+        return json({ error: '类型必须是 vless 或 ss' }, 400);
+    }
+
+    const domain = snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const finalPath = proxyPath || (type === 'ss' ? `/${uuid}` : '/?ed=2560');
+
+    const max = await db.prepare('SELECT MAX(id) as m FROM subscribe_config').first();
+    const finalRemark = remark || `${type.toUpperCase()}订阅-${(max?.m || 0) + 1}`;
+
+    const r = await db.prepare(
+        'INSERT INTO subscribe_config (type, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+    ).bind(type, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order).run();
+
+    return json({ success: true, data: { id: r.meta.last_row_id } });
+}
+
+async function handleUpdateSubscribeConfig(request, db, id) {
+    const body = await request.json();
+    const sets = [], vals = [];
+
+    if (body.uuid !== undefined) { sets.push('uuid = ?'); vals.push(body.uuid); }
+    if (body.snippetsDomain !== undefined) {
+        const domain = body.snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        sets.push('snippets_domain = ?');
+        vals.push(domain);
+    }
+    if (body.proxyPath !== undefined) { sets.push('proxy_path = ?'); vals.push(body.proxyPath); }
+    if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
+    if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled ? 1 : 0); }
+    if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
+
+    if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
+
+    sets.push('updated_at = datetime("now")');
+    vals.push(id);
+
+    await db.prepare(`UPDATE subscribe_config SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+    return json({ success: true });
+}
+
+async function handleDeleteSubscribeConfig(db, id) {
+    await db.prepare('DELETE FROM subscribe_config WHERE id = ?').bind(id).run();
+    return json({ success: true });
+}
+
 // VLESS 订阅配置
 async function handleGetVlessConfig(db) {
     const config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
@@ -631,9 +740,27 @@ async function handleGenerateSSSubscribe(request, db) {
     return json({ success: true, data: { plain: links.join('\n'), count: links.length } });
 }
 
+// 通过配置 ID 生成订阅
+async function handleSubscribeByConfigId(db, configId, url) {
+    const config = await db.prepare('SELECT * FROM subscribe_config WHERE id = ? AND enabled = 1').bind(configId).first();
+    if (!config) return new Response('Not Found', { status: 404 });
+
+    // 根据类型调用对应的订阅生成函数
+    if (config.type === 'vless') {
+        return handleSubscribe(db, config.uuid, url, config);
+    } else if (config.type === 'ss') {
+        return handleSSSubscribe(db, config.uuid, url, config);
+    }
+
+    return new Response('Invalid Config Type', { status: 400 });
+}
+
 // 公开订阅
-async function handleSubscribe(db, uuid, url) {
-    const config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
+async function handleSubscribe(db, uuid, url, configParam = null) {
+    let config = configParam;
+    if (!config) {
+        config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
+    }
     if (!config || uuid !== config.uuid) return new Response('Not Found', { status: 404 });
 
     // 解析URL参数
@@ -720,8 +847,11 @@ async function handleSubscribe(db, uuid, url) {
 }
 
 // SS 公开订阅
-async function handleSSSubscribe(db, password, url) {
-    const config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 2').first();
+async function handleSSSubscribe(db, password, url, configParam = null) {
+    let config = configParam;
+    if (!config) {
+        config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 2').first();
+    }
     if (!config || password !== config.uuid) return new Response('Not Found', { status: 404 });
 
     // 解析URL参数
