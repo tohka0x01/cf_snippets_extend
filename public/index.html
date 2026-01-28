@@ -493,6 +493,7 @@ return;
 
 list.innerHTML=d.data.map(item=>{
 const subUrl=`${location.origin}/sub/token/${item.token}`;
+const clashUrl=`https://sublink.eooce.com/clash?config=${encodeURIComponent(subUrl)}`;
 const statusClass=item.enabled?'online':'offline';
 const statusText=item.enabled?'已启用':'已禁用';
 return `
@@ -514,6 +515,7 @@ return `
 </div>
 <div class="card-actions">
 <button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
+<button class="btn btn-success btn-sm" onclick="copyText('${clashUrl}')">📋 复制Clash订阅</button>
 <button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('vless',${item.id})">✏️ 编辑</button>
 <button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">🔄 重置Token</button>
 <button class="btn btn-${item.enabled?'secondary':'success'} btn-sm" onclick="toggleSubscribeEnable(${item.id},${!item.enabled})">${item.enabled?'禁用':'启用'}</button>
@@ -536,6 +538,7 @@ return;
 
 list.innerHTML=d.data.map(item=>{
 const subUrl=`${location.origin}/sub/token/${item.token}`;
+const clashUrl=`https://sublink.eooce.com/clash?config=${encodeURIComponent(subUrl)}`;
 const statusClass=item.enabled?'online':'offline';
 const statusText=item.enabled?'已启用':'已禁用';
 return `
@@ -557,6 +560,7 @@ return `
 </div>
 <div class="card-actions">
 <button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
+<button class="btn btn-success btn-sm" onclick="copyText('${clashUrl}')">📋 复制Clash订阅</button>
 <button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('ss',${item.id})">✏️ 编辑</button>
 <button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">🔄 重置Token</button>
 <button class="btn btn-${item.enabled?'secondary':'success'} btn-sm" onclick="toggleSubscribeEnable(${item.id},${!item.enabled})">${item.enabled?'禁用':'启用'}</button>
