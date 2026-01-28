@@ -263,8 +263,6 @@
 
 支持批量添加，每行一条，格式：`IP/域名:端口#备注`
 
-![添加 CFIP](screenshots/add-cfip.png)
-
 ---
 
 ### 2. 添加 ProxyIP（可选）
