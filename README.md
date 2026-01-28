@@ -1,7 +1,20 @@
-# CF-Snippets/Worker-Extend
+# CF-Snippets/Pages-Extend
+
+> 一个功能强大的 Cloudflare Pages 代理管理工具，集成 ProxyIP、全局出站、CFIP 管理和订阅生成功能
+
 **本项目为老王的Snippets/Worker脚本功能扩展（SS/VLESS），需要先部署老王的Snippets/Worker，再部署这个,这个只负责根据配置的proxyIP、优选IP/域名、全局出站代理生成订阅，实际的节点还是走原本的
 主要是为了方便更换优选域名/IP和proxyip**
-> 一个功能强大的 Cloudflare Workers 代理管理工具，集成 ProxyIP、全局出站、CFIP 管理和订阅生成功能
+
+## 📢 部署说明
+
+**本项目采用 Cloudflare Pages 部署方式**
+
+- ✅ 支持 Git 集成，自动部署
+- ✅ 无限请求额度
+- ✅ 静态资源与 API 分离，性能更优
+- ✅ 部署简单，维护方便
+
+**如需 Worker 部署方式，请切换到 `worker` 分支查看**
 
 
 ## 📢 致谢声明
@@ -101,76 +114,76 @@
 
 ### 前置要求
 - 一个 Cloudflare 账号（没有的话去 [cloudflare.com](https://dash.cloudflare.com/sign-up) 免费注册）
+- 一个 GitHub 账号（用于 Fork 项目）
 
 ---
 
-### 步骤 1：登录 Cloudflare
+### 步骤 1：Fork 项目
 
-访问 [Cloudflare Dashboard](https://dash.cloudflare.com/)，登录你的账号。
+1. 访问本项目的 GitHub 页面
+2. 点击右上角的 **Fork** 按钮
+3. 将项目 Fork 到你的 GitHub 账号下
+4. 顺便点个 **Star** ⭐ 支持一下！
 
 ---
 
 ### 步骤 2：创建 D1 数据库
 
-1. 在左侧菜单找到 **Workers 和 Pages**，点击进入
-2. 切换到 **D1 SQL 数据库** 标签页
-3. 点击 **创建数据库** 按钮
-4. 数据库名称填写：`snippets-manager-db`
-5. 点击 **创建** 按钮
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 在左侧菜单找到 **Workers 和 Pages**，点击进入
+3. 切换到 **D1 SQL 数据库** 标签页
+4. 点击 **创建数据库** 按钮
+5. 数据库名称填写：`snippets-manager-db`
+6. 点击 **创建** 按钮
 
 ![创建 D1 数据库](screenshots/create-d1-web.png)
 
-创建成功后，**记下数据库 ID**（在数据库详情页面可以看到，格式类似：`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）
-
-![复制数据库 ID](screenshots/copy-db-id.png)
+创建成功后，数据库会自动初始化，无需手动执行 SQL。
 
 ---
 
-### 步骤 3：创建 Worker
+### 步骤 3：部署到 Cloudflare Pages
 
 1. 返回 **Workers 和 Pages** 主页
 2. 点击 **创建应用程序** 按钮
-3. 选择 **创建 Worker**
-4. Worker 名称填写：`snippets-manager`（可自定义）
-5. 点击 **部署** 按钮
+3. 选择 **Pages** 标签页
+4. 点击 **连接到 Git**
+5. 授权 Cloudflare 访问你的 GitHub 账号
+6. 选择刚才 Fork 的项目仓库
+7. 配置构建设置：
+   - **项目名称**：`cf-snippets-extend`（可自定义）
+   - **生产分支**：`main`
+   - **构建命令**：留空
+   - **构建输出目录**：`public`
+8. 点击 **保存并部署** 按钮
 
-![创建 Worker](screenshots/create-worker-web.png)
-
----
-
-### 步骤 4：上传代码
-
-1. 部署成功后，点击 **编辑代码** 按钮
-2. 删除编辑器中的所有默认代码
-3. 打开本项目的 `worker.js` 文件，复制全部内容
-4. 粘贴到 Cloudflare 编辑器中
-5. 点击右上角 **保存并部署** 按钮
-
-![上传代码](screenshots/upload-code-web.png)
+部署过程大约需要 1-2 分钟，请耐心等待。
 
 ---
 
-### 步骤 5：绑定数据库
+### 步骤 4：绑定 D1 数据库
 
-1. 点击 **设置** 标签页
-2. 找到 **绑定** 部分，点击 **添加**
-3. 选择 **D1 数据库**
-4. 变量名称填写：`DB`（必须是大写的 DB）
-5. D1 数据库选择：`snippets-manager-db`（步骤 2 创建的数据库）
-6. 点击 **保存** 按钮
+1. 部署成功后，进入 Pages 项目设置页面
+2. 点击左侧 **设置** → **函数** → **D1 数据库绑定**
+3. 点击 **添加绑定** 按钮
+4. 配置绑定：
+   - **变量名称**：`DB`（必须是大写的 DB）
+   - **D1 数据库**：选择 `snippets-manager-db`（步骤 2 创建的数据库）
+5. 点击 **保存** 按钮
 
 ![绑定数据库](screenshots/bind-db-web.png)
 
 ---
 
-### 步骤 6：设置 API Key
+### 步骤 5：设置 API Key
 
-1. 在 **设置** 页面，找到 **环境变量** 部分
+1. 在 Pages 项目设置页面，点击 **设置** → **环境变量**
 2. 点击 **添加变量** 按钮
-3. 变量类型选择：**加密**
-4. 变量名称填写：`API_KEY`（必须是大写）
-5. 值填写：你自己设定的登录密码（例如：`mySecretKey123`）
-6. 点击 **保存并部署** 按钮
+3. 配置环境变量：
+   - **变量名称**：`API_KEY`（必须是大写）
+   - **值**：你自己设定的登录密码（例如：`mySecretKey123`）
+   - **环境**：选择 **生产** 和 **预览**（都勾选）
+4. 点击 **保存** 按钮
 
 ![设置 API Key](screenshots/set-apikey-web.png)
 
@@ -178,12 +191,24 @@
 
 ---
 
+### 步骤 6：重新部署
+
+由于绑定和环境变量需要重新部署才能生效：
+
+1. 点击 **部署** 标签页
+2. 找到最新的部署记录
+3. 点击右侧的 **...** 菜单
+4. 选择 **重试部署**
+
+等待部署完成后，你的应用就可以使用了！
+
+---
+
 ### 步骤 7：访问管理界面
 
-1. 返回 Worker 主页，复制你的 Worker 地址（格式：`https://snippets-manager.你的子域.workers.dev`）
+1. 在 Pages 项目主页，复制你的项目地址（格式：`https://cf-snippets-extend.pages.dev`）
 2. 在浏览器中打开这个地址
-3. 使用步骤 6 中设置的 API Key 登录即可！
-
+3. 使用步骤 5 中设置的 API Key 登录即可！
 
 ---
 
@@ -200,7 +225,6 @@
 3. 选择 **📥 作为新数据导入**（推荐）或 **⚠️ 完全覆盖导入**
 4. 选择下载的 `initial-data.json` 文件
 5. 导入成功后，即可看到示例数据
-
 
 **提示**：
 - **作为新数据导入**：将示例数据添加到现有数据中，不会删除任何数据
@@ -282,7 +306,7 @@
 4. 点击 **💾 保存并生成订阅**
 
 生成后会显示：
-- **订阅地址**（格式：`https://你的域名/sub/你的UUID`）
+- **订阅地址**（格式：`https://你的Pages域名/sub/你的UUID`，例如：`https://cf-snippets-extend.pages.dev/sub/你的UUID`）
 - **Clash 订阅地址**（自动转换为 Clash 格式）
 
 #### Shadowsocks 订阅
@@ -295,7 +319,7 @@
 4. 点击 **💾 保存并生成订阅**
 
 生成后会显示：
-- **订阅地址**（格式：`https://你的域名/sub/ss/你的密码`）
+- **订阅地址**（格式：`https://你的Pages域名/sub/ss/你的密码`，例如：`https://cf-snippets-extend.pages.dev/sub/ss/你的密码`）
 - **Clash 订阅地址**（自动转换为 Clash 格式）
 
 #### ARGO 优选订阅
@@ -348,43 +372,43 @@
 
 1. **指定单个ProxyIP**：
    ```
-   https://你的域名/sub/你的UUID?proxyip=1
+   https://你的Pages域名/sub/你的UUID?proxyip=1
    ```
    生成ID为1的ProxyIP × 所有启用的CFIP的订阅
 
 2. **指定多个ProxyIP**：
    ```
-   https://你的域名/sub/你的UUID?proxyip=1,3,5
+   https://你的Pages域名/sub/你的UUID?proxyip=1,3,5
    ```
    生成ID为1、3、5的ProxyIP × 所有启用的CFIP的订阅
 
 3. **指定全局出站**：
    ```
-   https://你的域名/sub/你的UUID?outbound=2,4
+   https://你的Pages域名/sub/你的UUID?outbound=2,4
    ```
    生成ID为2、4的全局出站 × 所有启用的CFIP的订阅
 
 4. **同时指定ProxyIP和全局出站**：
    ```
-   https://你的域名/sub/你的UUID?proxyip=1&outbound=2
+   https://你的Pages域名/sub/你的UUID?proxyip=1&outbound=2
    ```
    生成ID为1的ProxyIP和ID为2的全局出站 × 所有启用的CFIP的订阅
 
 5. **指定CFIP**：
    ```
-   https://你的域名/sub/你的UUID?cfip=1,2,3
+   https://你的Pages域名/sub/你的UUID?cfip=1,2,3
    ```
    生成所有启用的ProxyIP/全局出站 × ID为1、2、3的CFIP的订阅
 
 6. **完全自定义组合**：
    ```
-   https://你的域名/sub/你的UUID?proxyip=1,2&outbound=3&cfip=1,2
+   https://你的Pages域名/sub/你的UUID?proxyip=1,2&outbound=3&cfip=1,2
    ```
    生成ID为1、2的ProxyIP和ID为3的全局出站 × ID为1、2的CFIP的订阅
 
 **SS订阅同样支持：**
 ```
-https://你的域名/sub/ss/你的密码?proxyip=1,2&cfip=1,2,3
+https://你的Pages域名/sub/ss/你的密码?proxyip=1,2&cfip=1,2,3
 ```
 
 **重要说明：**
@@ -449,7 +473,7 @@ https://你的域名/sub/ss/你的密码?proxyip=1,2&cfip=1,2,3
 
 **使用场景：**
 - **备份数据**：定期导出数据，防止数据丢失
-- **迁移数据**：在不同 Worker 之间迁移配置
+- **迁移数据**：在不同部署之间迁移配置
 - **分享配置**：与他人分享你的优选 IP/域名配置
 - **批量添加**：使用初始数据文件快速添加常用配置
 - **恢复配置**：误删数据后快速恢复
@@ -529,11 +553,13 @@ icook.hk#优选域名
   - 确认至少添加了一个启用的 CFIP
 
 ### Q4：如何修改 API Key？
-在 Cloudflare Workers 设置页面：
-1. 进入 **设置** → **环境变量**
-2. 找到 `API_KEY` 变量
-3. 点击 **编辑**，输入新密钥
-4. 点击 **保存并部署**
+在 Cloudflare Pages 设置页面：
+1. 进入 Pages 项目设置
+2. 点击 **设置** → **环境变量**
+3. 找到 `API_KEY` 变量
+4. 点击 **编辑**，输入新密钥
+5. 点击 **保存**
+6. 在 **部署** 标签页重新部署项目
 
 ### Q5：导入数据时应该选择哪种模式？
 - **首次使用**：选择"作为新数据导入"，导入 `initial-data.json` 快速开始
@@ -579,6 +605,19 @@ icook.hk#优选域名
   - ARGO 订阅：适合已有节点配置，想快速生成多个优选节点
   - 普通订阅：适合从头配置新的订阅服务
 
+### Q12：Pages 部署和 Worker 部署有什么区别？
+- **Pages 部署**（本项目采用）：
+  - 静态文件与 API 分离，结构更清晰
+  - 支持 Git 集成，代码更新自动部署
+  - 无限请求额度，无需担心流量限制
+  - 部署更简单，维护更方便
+- **Worker 部署**（传统方式）：
+  - 单文件包含所有代码，部署简单但维护困难
+  - 每天 100,000 请求限制
+  - 需要手动上传代码更新
+- **功能完全相同**，只是部署方式不同
+- **如需 Worker 部署，请切换到 `worker` 分支**
+
 ---
 
 ## 📄 开源协议
@@ -590,18 +629,28 @@ icook.hk#优选域名
 ## 📁 项目文件说明
 
 ```
-CF-snippets-managerend/
-├── worker.js          # 主程序文件（单文件包含前端和后端）
-├── wrangler.json         # Cloudflare Workers 配置文件
-├── initial-data.json     # 初始数据文件（可选导入）
-└── README.md             # 项目说明文档
+cf_snippet_extend/
+├── public/               # 静态文件目录
+│   └── index.html       # 前端页面
+├── _worker.js           # Pages Worker（处理 API 和订阅请求）
+├── wrangler.toml        # Cloudflare 配置文件
+├── initial-data.json    # 初始数据文件（可选导入）
+├── screenshots/         # 截图目录
+└── README.md            # 项目说明文档
 ```
 
 **文件说明：**
-- `worker.js`：完整的应用程序代码，包含 HTML、CSS、JavaScript 和后端 API
-- `wrangler.json`：Workers 部署配置，包含数据库绑定信息
+- `public/index.html`：前端页面，包含所有 HTML、CSS、JavaScript
+- `_worker.js`：Pages Worker 代码，处理所有 API 请求和订阅生成
+- `wrangler.toml`：Cloudflare Pages 配置，包含数据库绑定信息
 - `initial-data.json`：提供的初始数据，包含示例 ProxyIP 和 CFIP，可选导入
 - `README.md`：完整的使用文档和部署教程
+
+**Pages 部署特点：**
+- 静态文件（HTML/CSS/JS）与 API 逻辑分离
+- `_worker.js` 自动处理所有动态请求
+- 无需构建步骤，直接部署即可
+- 支持 Git 集成，代码更新自动部署
 
 ---
 
