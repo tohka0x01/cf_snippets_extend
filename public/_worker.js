@@ -73,6 +73,15 @@ async function initDB(db) {
             await db.prepare('UPDATE subscribe_config SET type = ?, token = ?, remark = ?, enabled = 1, sort_order = 0, created_at = datetime("now") WHERE id = 2')
                 .bind('ss', token, 'SS订阅-1').run();
         }
+
+        // 为所有没有 token 的配置生成 token
+        const { results: noTokenConfigs } = await db.prepare('SELECT id FROM subscribe_config WHERE token IS NULL').all();
+        if (noTokenConfigs && noTokenConfigs.length > 0) {
+            for (const config of noTokenConfigs) {
+                const token = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+                await db.prepare('UPDATE subscribe_config SET token = ? WHERE id = ?').bind(token, config.id).run();
+            }
+        }
     } catch (e) {
         console.error('Subscribe config migration error:', e);
     }
