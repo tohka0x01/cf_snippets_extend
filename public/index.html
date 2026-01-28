@@ -546,29 +546,29 @@ const tbody=document.getElementById('argoTable');
 tbody.innerHTML='';
 
 for(const item of d.data){
-const subUrl=`\${location.origin}/sub/argo/\${item.token}`;
+const subUrl=`${location.origin}/sub/argo/${item.token}`;
 const row=`
 <tr>
-<td><input type="checkbox" class="argo-check" value="\${item.id}"></td>
-<td>\${item.id}</td>
-<td>\${item.remark||'-'}</td>
-<td style="max-width:300px;word-break:break-all;font-size:11px">\${item.template_link}</td>
+<td><input type="checkbox" class="argo-check" value="${item.id}"></td>
+<td>${item.id}</td>
+<td>${item.remark||'-'}</td>
+<td style="max-width:300px;word-break:break-all;font-size:11px">${item.template_link}</td>
 <td>
 <div style="display:flex;gap:6px;align-items:center">
-<code style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">\${subUrl}</code>
-<button class="btn btn-success btn-sm" onclick="copyText('\${subUrl}')">📋 复制</button>
+<code style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${subUrl}</code>
+<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制</button>
 </div>
 </td>
 <td>
 <label class="switch">
-<input type="checkbox" \${item.enabled?'checked':''} onchange="toggleArgoEnable(\${item.id},this.checked)">
+<input type="checkbox" ${item.enabled?'checked':''} onchange="toggleArgoEnable(${item.id},this.checked)">
 <span class="slider"></span>
 </label>
 </td>
 <td>
 <div class="actions">
-<button class="btn btn-primary btn-sm" onclick="editArgo(\${item.id})">编辑</button>
-<button class="btn btn-danger btn-sm" onclick="deleteArgo(\${item.id})">删除</button>
+<button class="btn btn-primary btn-sm" onclick="editArgo(${item.id})">编辑</button>
+<button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">删除</button>
 </div>
 </td>
 </tr>
@@ -580,36 +580,36 @@ document.getElementById('argoCheckAll').checked=false;
 
 // 卡片视图
 document.getElementById('argoCardView').innerHTML=d.data.map(i=>{
-const subUrl=`\${location.origin}/sub/argo/\${i.token}`;
+const subUrl=`${location.origin}/sub/argo/${i.token}`;
 const statusClass=i.enabled?'online':'offline';
 const statusText=i.enabled?'已启用':'已禁用';
 const protocol=i.template_link.startsWith('vless://')?'VLESS':(i.template_link.startsWith('vmess://')?'VMess':'未知');
-return `<div class="outbound-card \${statusClass}" id="argo-card-\${i.id}">
-<input type="checkbox" class="card-checkbox argo-check" value="\${i.id}">
+return `<div class="outbound-card ${statusClass}" id="argo-card-${i.id}">
+<input type="checkbox" class="card-checkbox argo-check" value="${i.id}">
 <div class="card-header">
 <div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
-<div class="card-title">\${i.remark||'ARGO-'+i.id}</div>
-<div style="font-size:11px;color:#999;margin-top:2px">ID: \${i.id} | 协议: <span class="badge badge-info">\${protocol}</span></div>
+<div class="card-title">${i.remark||'ARGO-'+i.id}</div>
+<div style="font-size:11px;color:#999;margin-top:2px">ID: ${i.id} | 协议: <span class="badge badge-info">${protocol}</span></div>
 </div>
 </div>
 <div class="card-info">
 <div class="card-info-row">
 <span style="color:#999;min-width:60px">模板链接</span>
-<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">\${i.template_link}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">${i.template_link}</span>
 </div>
 <div class="card-info-row">
 <span style="color:#999;min-width:60px">订阅地址</span>
 <div style="display:flex;gap:6px;align-items:center;min-width:0;flex:1">
-<code style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">\${subUrl}</code>
-<button class="btn btn-success btn-sm" onclick="copyText('\${subUrl}')" style="flex-shrink:0">📋</button>
+<code style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">${subUrl}</code>
+<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')" style="flex-shrink:0">📋</button>
 </div>
 </div>
 </div>
 <div class="card-actions">
 <div style="flex:1"></div>
-<span onclick="editArgo(\${i.id})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
+<span onclick="editArgo(${i.id})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
 <label class="switch" style="margin:0;margin-left:12px">
-<input type="checkbox" \${i.enabled?'checked':''} onchange="toggleArgoEnable(\${i.id},this.checked)">
+<input type="checkbox" ${i.enabled?'checked':''} onchange="toggleArgoEnable(${i.id},this.checked)">
 <span class="slider"></span>
 </label>
 </div>
@@ -663,14 +663,14 @@ async function loadProxyIPs(){
 const d=await api('/proxyip');
 if(d.success){
 // 列表视图
-document.getElementById('proxyipTable').innerHTML=d.data.map(i=>`<tr id="proxy-\${i.id}">
-<td><input type="checkbox" class="proxyip-check" value="\${i.id}"></td>
-<td>\${i.id}</td>
-<td class="addr-cell">\${i.address}</td>
-<td>\${i.remark||'-'}</td>
-<td><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('proxyip',\${i.id},this.checked)"><span class="slider"></span></label></td>
+document.getElementById('proxyipTable').innerHTML=d.data.map(i=>`<tr id="proxy-${i.id}">
+<td><input type="checkbox" class="proxyip-check" value="${i.id}"></td>
+<td>${i.id}</td>
+<td class="addr-cell">${i.address}</td>
+<td>${i.remark||'-'}</td>
+<td><label class="switch"><input type="checkbox" ${i.enabled?'checked':''} onchange="toggle('proxyip',${i.id},this.checked)"><span class="slider"></span></label></td>
 <td class="actions">
-<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('proxyip',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}')">✏️ 编辑</button>
+<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('proxyip',${i.id},'${i.address.replace(/'/g,"\\\\'")}','${(i.remark||'').replace(/'/g,"\\\\'")}')">✏️ 编辑</button>
 </td></tr>`).join('');
 document.getElementById('proxyipCheckAll').checked=false;
 
@@ -678,23 +678,23 @@ document.getElementById('proxyipCheckAll').checked=false;
 document.getElementById('proxyipCardView').innerHTML=d.data.map(i=>{
 const statusClass=i.enabled?'online':'offline';
 const statusText=i.enabled?'已启用':'已禁用';
-return `<div class="outbound-card \${statusClass}" id="proxyip-card-\${i.id}">
-<input type="checkbox" class="card-checkbox proxyip-check" value="\${i.id}">
+return `<div class="outbound-card ${statusClass}" id="proxyip-card-${i.id}">
+<input type="checkbox" class="card-checkbox proxyip-check" value="${i.id}">
 <div class="card-header">
 <div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
-<div class="card-title">\${i.remark||'ProxyIP-'+i.id}</div>
+<div class="card-title">${i.remark||'ProxyIP-'+i.id}</div>
 </div>
 </div>
 <div class="card-info">
 <div class="card-info-row">
-<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">\${i.address}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${i.address}</span>
 </div>
 </div>
 <div class="card-actions">
 <div style="flex:1"></div>
-<span onclick="editItem('proxyip',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
+<span onclick="editItem('proxyip',${i.id},'${i.address.replace(/'/g,"\\\\'")}','${(i.remark||'').replace(/'/g,"\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
 <label class="switch" style="margin:0;margin-left:12px">
-<input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('proxyip',\${i.id},this.checked)">
+<input type="checkbox" ${i.enabled?'checked':''} onchange="toggle('proxyip',${i.id},this.checked)">
 <span class="slider"></span>
 </label>
 </div>
@@ -724,21 +724,21 @@ const city=i.exit_city||'';
 exitInfo=country&&city?country+'-'+city:(country||city);
 if(i.checked_at){
 const checkTime=new Date(i.checked_at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-exitInfo+=` <span style="font-size:11px;color:#999">(\${checkTime})</span>`;
+exitInfo+=` <span style="font-size:11px;color:#999">(${checkTime})</span>`;
 }
 }
-return `<tr id="outbound-\${i.id}">
-<td data-label="选择"><input type="checkbox" class="outbound-check" value="\${i.id}"></td>
-<td data-label="ID">\${i.id}</td>
-<td data-label="地址" class="addr-cell" title="\${i.address}">\${maskAddress(i.address)}</td>
-<td data-label="类型"><span class="badge badge-info">\${i.type}</span></td>
-<td data-label="出站" id="exit-\${i.id}" class="exit-link" onclick="showExitDetail(\${i.id})" title="点击查看详情">\${exitInfo}</td>
-<td data-label="备注">\${i.remark||'-'}</td>
-<td data-label="延迟" id="out-lat-\${i.id}" style="color:#999">-</td>
-<td data-label="状态"><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('outbound',\${i.id},this.checked)"><span class="slider"></span></label></td>
+return `<tr id="outbound-${i.id}">
+<td data-label="选择"><input type="checkbox" class="outbound-check" value="${i.id}"></td>
+<td data-label="ID">${i.id}</td>
+<td data-label="地址" class="addr-cell" title="${i.address}">${maskAddress(i.address)}</td>
+<td data-label="类型"><span class="badge badge-info">${i.type}</span></td>
+<td data-label="出站" id="exit-${i.id}" class="exit-link" onclick="showExitDetail(${i.id})" title="点击查看详情">${exitInfo}</td>
+<td data-label="备注">${i.remark||'-'}</td>
+<td data-label="延迟" id="out-lat-${i.id}" style="color:#999">-</td>
+<td data-label="状态"><label class="switch"><input type="checkbox" ${i.enabled?'checked':''} onchange="toggle('outbound',${i.id},this.checked)"><span class="slider"></span></label></td>
 <td data-label="操作" class="actions">
-<button class="btn btn-success btn-sm" data-icon="⚡" onclick="testSingleOutbound(\${i.id})">⚡ 测速</button>
-<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('outbound',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}')">✏️ 编辑</button>
+<button class="btn btn-success btn-sm" data-icon="⚡" onclick="testSingleOutbound(${i.id})">⚡ 测速</button>
+<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('outbound',${i.id},'${i.address.replace(/'/g,"\\\\'")}','${(i.remark||'').replace(/'/g,"\\\\'")}')">✏️ 编辑</button>
 </td></tr>`;
 }).join('');
 document.getElementById('outboundCheckAll').checked=false;
@@ -755,27 +755,27 @@ exitClass='online';
 }
 const statusClass=i.enabled?'online':'offline';
 const statusText=i.enabled?'已启用':'已禁用';
-return `<div class="outbound-card \${statusClass}" id="outbound-card-\${i.id}">
-<input type="checkbox" class="card-checkbox outbound-check" value="\${i.id}">
+return `<div class="outbound-card ${statusClass}" id="outbound-card-${i.id}">
+<input type="checkbox" class="card-checkbox outbound-check" value="${i.id}">
 <div class="card-header">
 <div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
-<div class="card-title">\${i.remark||'节点-'+i.id}</div>
+<div class="card-title">${i.remark||'节点-'+i.id}</div>
 </div>
 </div>
 <div class="card-info">
 <div class="card-info-row">
-<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">\${maskAddress(i.address)}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${maskAddress(i.address)}</span>
 </div>
 <div class="card-info-row">
-<span id="exit-card-\${i.id}" class="exit-link" onclick="showExitDetail(\${i.id})" title="点击查看详情" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">\${exitInfo}</span>
+<span id="exit-card-${i.id}" class="exit-link" onclick="showExitDetail(${i.id})" title="点击查看详情" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${exitInfo}</span>
 </div>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-<div class="card-latency unknown" id="out-lat-card-\${i.id}" onclick="testSingleOutbound(\${i.id})" style="margin:0;font-size:24px;cursor:pointer;user-select:none;line-height:1" title="点击测速">⚡</div>
+<div class="card-latency unknown" id="out-lat-card-${i.id}" onclick="testSingleOutbound(${i.id})" style="margin:0;font-size:24px;cursor:pointer;user-select:none;line-height:1" title="点击测速">⚡</div>
 <div style="display:flex;gap:12px;align-items:center">
-<span onclick="editItem('outbound',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
+<span onclick="editItem('outbound',${i.id},'${i.address.replace(/'/g,"\\\\'")}','${(i.remark||'').replace(/'/g,"\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
 <label class="switch" style="margin:0">
-<input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('outbound',\${i.id},this.checked)">
+<input type="checkbox" ${i.enabled?'checked':''} onchange="toggle('outbound',${i.id},this.checked)">
 <span class="slider"></span>
 </label>
 </div>
@@ -799,14 +799,14 @@ const d=await api('/cfip');
 if(d.success){
 // 列表视图
 document.getElementById('cfipTable').innerHTML=d.data.map(i=>`<tr>
-<td><input type="checkbox" class="cfip-check" value="\${i.id}"></td>
-<td>\${i.id}</td>
-<td>\${i.address}</td>
-<td>\${i.port}</td>
-<td>\${i.remark||'-'}</td>
-<td><label class="switch"><input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('cfip',\${i.id},this.checked)"><span class="slider"></span></label></td>
+<td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
+<td>${i.id}</td>
+<td>${i.address}</td>
+<td>${i.port}</td>
+<td>${i.remark||'-'}</td>
+<td><label class="switch"><input type="checkbox" ${i.enabled?'checked':''} onchange="toggle('cfip',${i.id},this.checked)"><span class="slider"></span></label></td>
 <td class="actions">
-<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('cfip',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}',\${i.port})">✏️ 编辑</button>
+<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g,"\\\\'")}','${(i.remark||'').replace(/'/g,"\\\\'")}',${i.port})">✏️ 编辑</button>
 </td></tr>`).join('');
 document.getElementById('cfipCheckAll').checked=false;
 
@@ -814,23 +814,23 @@ document.getElementById('cfipCheckAll').checked=false;
 document.getElementById('cfipCardView').innerHTML=d.data.map(i=>{
 const statusClass=i.enabled?'online':'offline';
 const statusText=i.enabled?'已启用':'已禁用';
-return `<div class="outbound-card \${statusClass}" id="cfip-card-\${i.id}">
-<input type="checkbox" class="card-checkbox cfip-check" value="\${i.id}">
+return `<div class="outbound-card ${statusClass}" id="cfip-card-${i.id}">
+<input type="checkbox" class="card-checkbox cfip-check" value="${i.id}">
 <div class="card-header">
 <div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
-<div class="card-title">\${i.remark||'CFIP-'+i.id}</div>
+<div class="card-title">${i.remark||'CFIP-'+i.id}</div>
 </div>
 </div>
 <div class="card-info">
 <div class="card-info-row">
-<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">\${i.address}:\${i.port}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${i.address}:${i.port}</span>
 </div>
 </div>
 <div class="card-actions">
 <div style="flex:1"></div>
-<span onclick="editItem('cfip',\${i.id},'\${i.address.replace(/'/g,"\\\\'")}','\${(i.remark||'').replace(/'/g,"\\\\'")}',\${i.port})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
+<span onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g,"\\\\'")}','${(i.remark||'').replace(/'/g,"\\\\'")}',${i.port})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
 <label class="switch" style="margin:0;margin-left:12px">
-<input type="checkbox" \${i.enabled?'checked':''} onchange="toggle('cfip',\${i.id},this.checked)">
+<input type="checkbox" ${i.enabled?'checked':''} onchange="toggle('cfip',${i.id},this.checked)">
 <span class="slider"></span>
 </label>
 </div>
@@ -1133,15 +1133,15 @@ const isEdit=id!==null;
 const titles={'proxyip':'ProxyIP(反代IP)','outbound':'全局出站','cfip':'CFIP(优选域名)'};
 document.getElementById('modalTitle').textContent=(isEdit?'编辑':'添加')+titles[type];
 if(type==='proxyip'){
-document.getElementById('modalBody').innerHTML=`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="\${addr}" placeholder="IP/域名"></div>
-<div class="form-group"><label>备注</label><input type="text" id="mRemark" value="\${remark}"></div>`;
+document.getElementById('modalBody').innerHTML=`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="IP/域名"></div>
+<div class="form-group"><label>备注</label><input type="text" id="mRemark" value="${remark}"></div>`;
 }else if(type==='outbound'){
-document.getElementById('modalBody').innerHTML=`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="\${addr}" placeholder="socks5://host:port 或 http://host:port"></div>
-<div class="form-group"><label>备注</label><input type="text" id="mRemark" value="\${remark}"></div>`;
+document.getElementById('modalBody').innerHTML=`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="socks5://host:port 或 http://host:port"></div>
+<div class="form-group"><label>备注</label><input type="text" id="mRemark" value="${remark}"></div>`;
 }else{
-document.getElementById('modalBody').innerHTML=`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="\${addr}" placeholder="优选域名或IP"></div>
-<div class="form-group"><label>端口</label><input type="number" id="mPort" value="\${port}"></div>
-<div class="form-group"><label>备注</label><input type="text" id="mRemark" value="\${remark}"></div>`;
+document.getElementById('modalBody').innerHTML=`<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="优选域名或IP"></div>
+<div class="form-group"><label>端口</label><input type="number" id="mPort" value="${port}"></div>
+<div class="form-group"><label>备注</label><input type="text" id="mRemark" value="${remark}"></div>`;
 }
 document.getElementById('addModal').classList.remove('hidden');
 }
@@ -1250,7 +1250,7 @@ const yesNo=(val)=>val?'<span style="background:#48c774;color:#fff;padding:3px 1
 const percent=(val)=>{
 const v=parseFloat(val)||0;
 const color=v<10?'#48c774':v<30?'#ffdd57':'#f14668';
-return `<span style="background:\${color};color:\${v<30?'#333':'#fff'};padding:3px 10px;border-radius:4px;font-size:12px;font-weight:bold">\${v.toFixed(2)}%</span>`;
+return `<span style="background:${color};color:${v<30?'#333':'#fff'};padding:3px 10px;border-radius:4px;font-size:12px;font-weight:bold">${v.toFixed(2)}%</span>`;
 };
 
 const html=`
@@ -1258,40 +1258,40 @@ const html=`
 <div style="flex:1;background:#e8f5e9;padding:20px;border-radius:8px">
 <h3 style="color:#2e7d32;margin:0 0 16px 0;text-align:center;font-size:18px">入口信息</h3>
 <div style="line-height:2.4;font-size:14px">
-<p><strong>IP地址：</strong>\${entryInfo&&entryInfo.ip||'-'}</p>
-<p><strong>网络爬虫：</strong>\${entryInfo&&entryInfo.is_crawler!==undefined?yesNo(entryInfo.is_crawler):'-'}</p>
-<p><strong>数据中心：</strong>\${entryInfo&&entryInfo.is_datacenter!==undefined?yesNo(entryInfo.is_datacenter):'-'}</p>
-<p><strong>Tor网络：</strong>\${entryInfo&&entryInfo.is_tor!==undefined?yesNo(entryInfo.is_tor):'-'}</p>
-<p><strong>代理：</strong>\${entryInfo&&entryInfo.is_proxy!==undefined?yesNo(entryInfo.is_proxy):'-'}</p>
-<p><strong>VPN：</strong>\${entryInfo&&entryInfo.is_vpn!==undefined?yesNo(entryInfo.is_vpn):'-'}</p>
-<p><strong>滥用行为：</strong>\${entryInfo&&entryInfo.is_abuser!==undefined?yesNo(entryInfo.is_abuser):'-'}</p>
-<p><strong>滥用风险评分：</strong>\${entryInfo&&entryInfo.abuse_score!==undefined?percent(entryInfo.abuse_score):'-'}</p>
-<p><strong>自治系统编号：</strong>\${entryInfo&&entryInfo.asn&&entryInfo.asn.asn?'AS'+entryInfo.asn.asn:'-'}</p>
-<p><strong>所属组织：</strong>\${entryInfo&&entryInfo.asn&&entryInfo.asn.org||'-'}</p>
-<p><strong>国家：</strong>\${entryInfo&&entryInfo.location&&entryInfo.location.country||'-'}</p>
-<p><strong>城市：</strong>\${entryInfo&&entryInfo.location&&entryInfo.location.city||'-'}</p>
+<p><strong>IP地址：</strong>${entryInfo&&entryInfo.ip||'-'}</p>
+<p><strong>网络爬虫：</strong>${entryInfo&&entryInfo.is_crawler!==undefined?yesNo(entryInfo.is_crawler):'-'}</p>
+<p><strong>数据中心：</strong>${entryInfo&&entryInfo.is_datacenter!==undefined?yesNo(entryInfo.is_datacenter):'-'}</p>
+<p><strong>Tor网络：</strong>${entryInfo&&entryInfo.is_tor!==undefined?yesNo(entryInfo.is_tor):'-'}</p>
+<p><strong>代理：</strong>${entryInfo&&entryInfo.is_proxy!==undefined?yesNo(entryInfo.is_proxy):'-'}</p>
+<p><strong>VPN：</strong>${entryInfo&&entryInfo.is_vpn!==undefined?yesNo(entryInfo.is_vpn):'-'}</p>
+<p><strong>滥用行为：</strong>${entryInfo&&entryInfo.is_abuser!==undefined?yesNo(entryInfo.is_abuser):'-'}</p>
+<p><strong>滥用风险评分：</strong>${entryInfo&&entryInfo.abuse_score!==undefined?percent(entryInfo.abuse_score):'-'}</p>
+<p><strong>自治系统编号：</strong>${entryInfo&&entryInfo.asn&&entryInfo.asn.asn?'AS'+entryInfo.asn.asn:'-'}</p>
+<p><strong>所属组织：</strong>${entryInfo&&entryInfo.asn&&entryInfo.asn.org||'-'}</p>
+<p><strong>国家：</strong>${entryInfo&&entryInfo.location&&entryInfo.location.country||'-'}</p>
+<p><strong>城市：</strong>${entryInfo&&entryInfo.location&&entryInfo.location.city||'-'}</p>
 </div>
 </div>
 <div style="flex:1;background:#e3f2fd;padding:20px;border-radius:8px">
 <h3 style="color:#1976d2;margin:0 0 16px 0;text-align:center;font-size:18px">出口信息</h3>
 <div style="line-height:2.4;font-size:14px">
-<p><strong>IP地址：</strong>\${exitInfo&&exitInfo.ip||'-'}</p>
-<p><strong>网络爬虫：</strong>\${exitInfo&&exitInfo.is_crawler!==undefined?yesNo(exitInfo.is_crawler):'-'}</p>
-<p><strong>数据中心：</strong>\${exitInfo&&exitInfo.is_datacenter!==undefined?yesNo(exitInfo.is_datacenter):'-'}</p>
-<p><strong>Tor网络：</strong>\${exitInfo&&exitInfo.is_tor!==undefined?yesNo(exitInfo.is_tor):'-'}</p>
-<p><strong>代理：</strong>\${exitInfo&&exitInfo.is_proxy!==undefined?yesNo(exitInfo.is_proxy):'-'}</p>
-<p><strong>VPN：</strong>\${exitInfo&&exitInfo.is_vpn!==undefined?yesNo(exitInfo.is_vpn):'-'}</p>
-<p><strong>滥用行为：</strong>\${exitInfo&&exitInfo.is_abuser!==undefined?yesNo(exitInfo.is_abuser):'-'}</p>
-<p><strong>滥用风险评分：</strong>\${exitInfo&&exitInfo.abuse_score!==undefined?percent(exitInfo.abuse_score):'-'}</p>
-<p><strong>自治系统编号：</strong>\${exitInfo&&exitInfo.asn&&exitInfo.asn.asn?'AS'+exitInfo.asn.asn:'-'}</p>
-<p><strong>所属组织：</strong>\${exitInfo&&exitInfo.asn&&exitInfo.asn.org||'-'}</p>
-<p><strong>国家：</strong>\${exitInfo&&exitInfo.location&&exitInfo.location.country||'-'}</p>
-<p><strong>城市：</strong>\${exitInfo&&exitInfo.location&&exitInfo.location.city||'-'}</p>
+<p><strong>IP地址：</strong>${exitInfo&&exitInfo.ip||'-'}</p>
+<p><strong>网络爬虫：</strong>${exitInfo&&exitInfo.is_crawler!==undefined?yesNo(exitInfo.is_crawler):'-'}</p>
+<p><strong>数据中心：</strong>${exitInfo&&exitInfo.is_datacenter!==undefined?yesNo(exitInfo.is_datacenter):'-'}</p>
+<p><strong>Tor网络：</strong>${exitInfo&&exitInfo.is_tor!==undefined?yesNo(exitInfo.is_tor):'-'}</p>
+<p><strong>代理：</strong>${exitInfo&&exitInfo.is_proxy!==undefined?yesNo(exitInfo.is_proxy):'-'}</p>
+<p><strong>VPN：</strong>${exitInfo&&exitInfo.is_vpn!==undefined?yesNo(exitInfo.is_vpn):'-'}</p>
+<p><strong>滥用行为：</strong>${exitInfo&&exitInfo.is_abuser!==undefined?yesNo(exitInfo.is_abuser):'-'}</p>
+<p><strong>滥用风险评分：</strong>${exitInfo&&exitInfo.abuse_score!==undefined?percent(exitInfo.abuse_score):'-'}</p>
+<p><strong>自治系统编号：</strong>${exitInfo&&exitInfo.asn&&exitInfo.asn.asn?'AS'+exitInfo.asn.asn:'-'}</p>
+<p><strong>所属组织：</strong>${exitInfo&&exitInfo.asn&&exitInfo.asn.org||'-'}</p>
+<p><strong>国家：</strong>${exitInfo&&exitInfo.location&&exitInfo.location.country||'-'}</p>
+<p><strong>城市：</strong>${exitInfo&&exitInfo.location&&exitInfo.location.city||'-'}</p>
 </div>
 </div>
 </div>
 <div style="text-align:center;margin-top:16px;color:#999;font-size:13px">
-检测时间：\${outbound.checked_at?new Date(outbound.checked_at).toLocaleString('zh-CN'):'-'}
+检测时间：${outbound.checked_at?new Date(outbound.checked_at).toLocaleString('zh-CN'):'-'}
 </div>
 `;
 document.getElementById('exitDetailBody').innerHTML=html;
@@ -1327,7 +1327,7 @@ const exitInfo=country&&city?country+'-'+city:(country||city||'未知');
 const checkTime=new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 // 更新列表视图
 if(exitCell){
-exitCell.innerHTML=`\${exitInfo} <span style="font-size:11px;color:#999">(\${checkTime})</span>`;
+exitCell.innerHTML=`${exitInfo} <span style="font-size:11px;color:#999">(${checkTime})</span>`;
 exitCell.className='exit-link';
 }
 // 更新卡片视图
@@ -1418,7 +1418,7 @@ const exitInfo=country&&city?country+'-'+city:(country||city||'未知');
 const checkTime=new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 // 更新列表视图
 if(exitCell){
-exitCell.innerHTML=`\${exitInfo} <span style="font-size:11px;color:#999">(\${checkTime})</span>`;
+exitCell.innerHTML=`${exitInfo} <span style="font-size:11px;color:#999">(${checkTime})</span>`;
 exitCell.className='exit-link';
 }
 // 更新卡片视图
@@ -1515,7 +1515,7 @@ const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'
 const url=URL.createObjectURL(blob);
 const a=document.createElement('a');
 a.href=url;
-a.download=`cf-snippets-extend-\${new Date().toISOString().split('T')[0]}.json`;
+a.download=`cf-snippets-extend-${new Date().toISOString().split('T')[0]}.json`;
 document.body.appendChild(a);
 a.click();
 document.body.removeChild(a);
@@ -1712,7 +1712,7 @@ address=addrPart;
 items.push({address,port,remark:remark||undefined});
 }
 }catch(e){
-errors.push(`第\${lineNum}行: \${e.message}`);
+errors.push(`第${lineNum}行: ${e.message}`);
 }
 }
 
@@ -1734,7 +1734,7 @@ failed++;
 }
 hideLoading();
 
-document.getElementById('batchAlert').innerHTML=`<div class="alert alert-success">成功添加 \${success} 条\${failed>0?'，失败 '+failed+' 条':''}</div>`;
+document.getElementById('batchAlert').innerHTML=`<div class="alert alert-success">成功添加 ${success} 条${failed>0?'，失败 '+failed+' 条':''}</div>`;
 if(batchType==='proxyip')await loadProxyIPs();
 else if(batchType==='outbound')await loadOutbounds();
 else if(batchType==='argo')await loadArgoSubscribes();
@@ -1758,7 +1758,7 @@ const checks=Array.from(document.querySelectorAll('.'+className+':checked')).fil
 });
 if(checks.length===0)return alert('请先选择要修改的项');
 
-if(!confirm(`确定\${enabled?'启用':'禁用'}选中的 \${checks.length} 项？`))return;
+if(!confirm(`确定${enabled?'启用':'禁用'}选中的 ${checks.length} 项？`))return;
 
 showLoading();
 let success=0,failed=0;
@@ -1772,7 +1772,7 @@ failed++;
 }
 hideLoading();
 
-alert(`操作完成：成功 \${success} 条\${failed>0?'，失败 '+failed+' 条':''}`);
+alert(`操作完成：成功 ${success} 条${failed>0?'，失败 '+failed+' 条':''}`);
 if(type==='proxyip')await loadProxyIPs();
 else if(type==='outbound')await loadOutbounds();
 else if(type==='argo')await loadArgoSubscribes();
@@ -1792,7 +1792,7 @@ const checks=Array.from(document.querySelectorAll('.'+className+':checked')).fil
 });
 if(checks.length===0)return alert('请先选择要删除的项');
 
-if(!confirm(`确定删除选中的 \${checks.length} 项？`))return;
+if(!confirm(`确定删除选中的 ${checks.length} 项？`))return;
 
 showLoading();
 let success=0,failed=0;
@@ -1806,7 +1806,7 @@ failed++;
 }
 hideLoading();
 
-alert(`删除完成：成功 \${success} 条\${failed>0?'，失败 '+failed+' 条':''}`);
+alert(`删除完成：成功 ${success} 条${failed>0?'，失败 '+failed+' 条':''}`);
 if(type==='proxyip')await loadProxyIPs();
 else if(type==='outbound')await loadOutbounds();
 else if(type==='argo')await loadArgoSubscribes();
