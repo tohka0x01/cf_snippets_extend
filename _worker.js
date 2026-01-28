@@ -96,14 +96,14 @@ export default {
             }
         }
 
-        // 静态页面由 Pages 自动处理
-        if (path === '/' || path === '/index.html' || !path.startsWith('/api/') && !path.startsWith('/sub/')) {
-            return env.ASSETS.fetch(request);
-        }
-
-        // 登录接口
+        // 登录接口（放在静态资源处理之前）
         if (path === '/api/auth/login' && method === 'POST') {
             return handleLogin(request, env);
+        }
+
+        // 静态页面由 Pages 自动处理
+        if (path === '/' || path === '/index.html' || (!path.startsWith('/api/') && !path.startsWith('/sub/'))) {
+            return env.ASSETS.fetch(request);
         }
 
         // 内部 API - 使用 env.API_KEY 直接验证（供其他 Worker 调用）
