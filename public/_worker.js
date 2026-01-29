@@ -3108,8 +3108,8 @@ async function handleClashSubscribe(db, url, env) {
 
     return new Response(output, {
         headers: {
-            'Content-Type': 'text/yaml; charset=utf-8',
-            'Content-Disposition': 'attachment; filename="clash.yaml"',
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Content-Disposition': 'inline; filename="clash.yaml"',
             'Access-Control-Allow-Origin': '*'
         }
     });
