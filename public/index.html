@@ -238,7 +238,6 @@ Star
 <h2>VLESS 订阅配置</h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
 <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showSubscribeModal('vless')">➕ 添加配置</button>
-<button class="btn btn-success btn-sm" data-icon="📋" onclick="copyAllSubscribes('vless')">📋 复制全部订阅</button>
 </div>
 </div>
 
@@ -262,7 +261,6 @@ Star
 <h2>Shadowsocks 订阅配置</h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
 <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showSubscribeModal('ss')">➕ 添加配置</button>
-<button class="btn btn-success btn-sm" data-icon="📋" onclick="copyAllSubscribes('ss')">📋 复制全部订阅</button>
 </div>
 </div>
 
@@ -286,8 +284,6 @@ Star
 <h2>ARGO 优选订阅管理</h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
 <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('argo')">➕ 添加</button>
-<button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('argo',true)">✓ 启用</button>
-<button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('argo',false)">✗ 禁用</button>
 <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('argo')">🗑️ 删除</button>
 </div>
 </div>
@@ -299,24 +295,7 @@ Star
 3、节点数量：每个模板会生成 N 个节点（N = 启用的 CFIP 数量）。
 </div>
 
-<div id="argoListView">
-<table class="table">
-<thead>
-<tr>
-<th><input type="checkbox" id="argoCheckAll" onchange="checkAll('argo',this.checked)"></th>
-<th>ID</th>
-<th>备注</th>
-<th>模板链接</th>
-<th>订阅地址</th>
-<th>状态</th>
-<th>操作</th>
-</tr>
-</thead>
-<tbody id="argoTable"></tbody>
-</table>
-</div>
-
-<div id="argoCardView" class="card-grid hidden"></div>
+<div id="argoConfigList"></div>
 </div>
 </div>
 
@@ -642,89 +621,48 @@ async function loadArgoSubscribes(){
 const d=await api('/argo');
 if(!d.success)return;
 
-// 列表视图
-const tbody=document.getElementById('argoTable');
-tbody.innerHTML='';
-
-for(const item of d.data){
-const subUrl=`${location.origin}/sub/argo/${item.token}`;
-const row=`
-<tr>
-<td><input type="checkbox" class="argo-check" value="${item.id}"></td>
-<td>${item.id}</td>
-<td>${item.remark||'-'}</td>
-<td style="max-width:300px;word-break:break-all;font-size:11px">${item.template_link}</td>
-<td>
-<div style="display:flex;gap:6px;align-items:center">
-<code style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${subUrl}</code>
-<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制</button>
-</div>
-</td>
-<td>
-<label class="switch">
-<input type="checkbox" ${item.enabled?'checked':''} onchange="toggleArgoEnable(${item.id},this.checked)">
-<span class="slider"></span>
-</label>
-</td>
-<td>
-<div class="actions">
-<button class="btn btn-primary btn-sm" onclick="editArgo(${item.id})">编辑</button>
-<button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">删除</button>
-</div>
-</td>
-</tr>
-`;
-tbody.innerHTML+=row;
+const list=document.getElementById('argoConfigList');
+if(d.data.length===0){
+list.innerHTML='<div style="text-align:center;padding:40px;color:#999">暂无配置，点击"添加"开始</div>';
+return;
 }
 
-document.getElementById('argoCheckAll').checked=false;
+list.innerHTML=d.data.map(item=>{
+const subUrl=`${location.origin}/sub/argo/${item.token}`;
+const statusClass=item.enabled?'online':'offline';
+const statusText=item.enabled?'已启用':'已禁用';
+const protocol=item.template_link.startsWith('vless://')?'VLESS':(item.template_link.startsWith('vmess://')?'VMess':'未知');
 
-// 卡片视图
-document.getElementById('argoCardView').innerHTML=d.data.map(i=>{
-const subUrl=`${location.origin}/sub/argo/${i.token}`;
-const statusClass=i.enabled?'online':'offline';
-const statusText=i.enabled?'已启用':'已禁用';
-const protocol=i.template_link.startsWith('vless://')?'VLESS':(i.template_link.startsWith('vmess://')?'VMess':'未知');
-return `<div class="outbound-card ${statusClass}" id="argo-card-${i.id}">
-<input type="checkbox" class="card-checkbox argo-check" value="${i.id}">
+return `
+<div class="outbound-card ${statusClass}" style="margin-bottom:16px">
 <div class="card-header">
-<div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
-<div class="card-title">${i.remark||'ARGO-'+i.id}</div>
-<div style="font-size:11px;color:#999;margin-top:2px">ID: ${i.id} | 协议: <span class="badge badge-info">${protocol}</span></div>
+<div style="flex:1">
+<div class="card-title">${item.remark||'ARGO-'+item.id}</div>
+<div style="font-size:11px;color:#999;margin-top:4px">ID: ${item.id} | 协议: <span class="badge badge-info">${protocol}</span></div>
 </div>
+<span class="badge badge-${item.enabled?'success':'secondary'}">${statusText}</span>
 </div>
 <div class="card-info">
 <div class="card-info-row">
 <span style="color:#999;min-width:60px">模板链接</span>
-<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">${i.template_link}</span>
+<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">${item.template_link}</span>
 </div>
 <div class="card-info-row">
-<span style="color:#999;min-width:60px">订阅地址</span>
-<div style="display:flex;gap:6px;align-items:center;min-width:0;flex:1">
-<code style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">${subUrl}</code>
-<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')" style="flex-shrink:0">📋</button>
-</div>
+<strong>订阅地址:</strong>
+<code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
 </div>
 </div>
 <div class="card-actions">
-<div style="flex:1"></div>
-<span onclick="editArgo(${i.id})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
-<label class="switch" style="margin:0;margin-left:12px">
-<input type="checkbox" ${i.enabled?'checked':''} onchange="toggleArgoEnable(${i.id},this.checked)">
-<span class="slider"></span>
-</label>
+<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
+<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
+<button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
+<button class="btn btn-warning btn-sm" onclick="editArgo(${item.id})">✏️ 编辑</button>
+<button class="btn btn-${item.enabled?'secondary':'success'} btn-sm" onclick="toggleArgoEnable(${item.id},${!item.enabled})">${item.enabled?'禁用':'启用'}</button>
+<button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">🗑️ 删除</button>
 </div>
-</div>`;
+</div>
+`;
 }).join('');
-
-// 根据当前视图模式显示对应的视图
-if(globalViewMode==='card'){
-document.getElementById('argoListView').classList.add('hidden');
-document.getElementById('argoCardView').classList.remove('hidden');
-}else{
-document.getElementById('argoListView').classList.remove('hidden');
-document.getElementById('argoCardView').classList.add('hidden');
-}
 }
 
 function copyText(text){
@@ -1379,27 +1317,6 @@ await loadSSConfig();
 alert(`Token 已重置\n\n新 Token: ${d.data.token}`);
 }else alert(d.error);
 }finally{hideLoading()}
-}
-
-async function copyAllSubscribes(type){
-const d=await api(`/subscribe/config?type=${type}`);
-if(!d.success||d.data.length===0)return alert('没有可用的订阅配置');
-
-const urls=d.data.filter(x=>x.enabled).map(x=>`${location.origin}/sub/token/${x.token}`).join('\n');
-if(!urls)return alert('没有启用的订阅配置');
-
-try{
-await navigator.clipboard.writeText(urls);
-alert(`已复制${d.data.filter(x=>x.enabled).length}个订阅地址`);
-}catch(e){
-const textarea=document.createElement('textarea');
-textarea.value=urls;
-document.body.appendChild(textarea);
-textarea.select();
-document.execCommand('copy');
-document.body.removeChild(textarea);
-alert(`已复制${d.data.filter(x=>x.enabled).length}个订阅地址`);
-}
 }
 
 async function generateVless(){
