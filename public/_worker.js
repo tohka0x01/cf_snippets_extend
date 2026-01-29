@@ -454,10 +454,20 @@ async function handleAddArgoSubscribe(request, db) {
 }
 
 async function handleUpdateArgoSubscribe(request, db, id) {
-    const { template_link, remark, enabled } = await request.json();
-    await db.prepare(
-        'UPDATE argo_subscribe SET template_link = ?, remark = ?, enabled = ?, updated_at = datetime("now") WHERE id = ?'
-    ).bind(template_link, remark, enabled, id).run();
+    const body = await request.json();
+    const sets = [], vals = [];
+
+    if (body.template_link !== undefined) { sets.push('template_link = ?'); vals.push(body.template_link); }
+    if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
+    if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled); }
+    if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
+
+    if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
+
+    sets.push('updated_at = datetime("now")');
+    vals.push(id);
+
+    await db.prepare(`UPDATE argo_subscribe SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
     return json({ success: true });
 }
 
