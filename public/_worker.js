@@ -2298,7 +2298,10 @@ class SubParser {
             const match = uri.match(/[?&]plugin=([^#]+)/);
             if (match) {
                 const rawPlugin = match[1];
-                if (rawPlugin.includes('path=') || rawPlugin.includes('obfs-host=')) {
+                if (rawPlugin.includes('path=') || rawPlugin.includes('path%3D') || 
+                    rawPlugin.includes('obfs-host=') || rawPlugin.includes('obfs-host%3D') ||
+                    rawPlugin.includes('host=') || rawPlugin.includes('host%3D') ||
+                    rawPlugin.includes('tls')) {
                     pluginStr = rawPlugin;
                 }
             }
