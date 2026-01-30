@@ -1799,7 +1799,7 @@ async function submitBatch(){
 const input=document.getElementById('batchInput').value.trim();
 if(!input)return alert('请输入数据');
 
-const lines=input.split('\\n').filter(l=>l.trim());
+const lines=input.split(/\r?\n/).filter(l=>l.trim());
 if(lines.length===0)return alert('没有有效数据');
 
 const items=[];
