@@ -1,6 +1,6 @@
 import { connect } from 'cloudflare:sockets';
 
-let proxyIP = 'proxy.xxxxxxxx.tk:50001';  // proxyIP，也可以是socks5或http
+let proxyIP = '';
 let yourUUID = '69a33565-c524-4c8d-b46b-0eb7df43fa36';  // UUID
 
 function formatIdentifier(arr, offset = 0) {

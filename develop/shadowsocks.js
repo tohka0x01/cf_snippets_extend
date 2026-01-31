@@ -1,7 +1,7 @@
 // 如需要使用环境变量,将462至468行取消注释
 import { connect } from 'cloudflare:sockets';
 
-let proxyIP = 'proxy.xxxxxxxx.tk:50001';  // proxyIP 格式：ip、域名、ip:port、域名:port等,没填写port，默认使用443,也可以是socks5
+let proxyIP = '';
 let password = 'bd0ccadb-4289-4215-9c40-c8c2df6743c6';  // 节点UUID
 let SSpath = '';          // 路径验证，为空则使用UUID作为验证路径
 
