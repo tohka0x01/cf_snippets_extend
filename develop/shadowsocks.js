@@ -2,7 +2,7 @@
 import { connect } from 'cloudflare:sockets';
 
 let proxyIP = '';
-let password = 'bd0ccadb-4289-4215-9c40-c8c2df6743c6';  // 节点UUID
+let password = '8c8c6c4b-b5b0-40a4-b9a2-272cc6b50a8a';  // 节点UUID
 let SSpath = '';          // 路径验证，为空则使用UUID作为验证路径
 
 function closeSocketQuietly(socket) {
@@ -441,7 +441,7 @@ export default {
         try {
             // if (env.PROXYIP || env.proxyip || env.proxyIP) {
             //     const servers = (env.PROXYIP || env.proxyip || env.proxyIP).split(',').map(s => s.trim());
-            //     //proxyIP = servers[0]; 
+            //     //proxyIP = servers[0];
             // }
             // password = env.PASSWORD || env.password || env.uuid || env.UUID || password;
             // subPath = env.SUB_PATH || env.subpath || subPath;

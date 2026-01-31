@@ -1,7 +1,7 @@
 import { connect } from 'cloudflare:sockets';
 
 let proxyIP = '';
-let yourUUID = '69a33565-c524-4c8d-b46b-0eb7df43fa36';  // UUID
+let yourUUID = 'c92240e7-ecb8-4570-b7a1-23e72eb8690e';  // UUID
 
 function formatIdentifier(arr, offset = 0) {
     const hex = [...arr.slice(offset, offset + 16)].map(b => b.toString(16).padStart(2, '0')).join('');
