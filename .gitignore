@@ -1,6 +1,6 @@
 提示词.txt
 .idea/
-
+.vscode/
 
 # Wrangler 配置文件（包含敏感信息）
 wrangler.json

@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  cf-auto-check:
+    build: .
+    container_name: cf-auto-check
+    restart: unless-stopped
+    environment:
+      - API_URL=${API_URL}
+      - API_KEY=${API_KEY}
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-3600}
+      - CONCURRENT_TESTS=${CONCURRENT_TESTS:-5}
+      - TIMEOUT=${TIMEOUT:-5000}
+      - TEST_URL=${TEST_URL:-https://www.cloudflare.com/cdn-cgi/trace}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - cf-network
+
+networks:
+  cf-network:
+    driver: bridge
