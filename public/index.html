@@ -940,7 +940,7 @@
         </div>
 
         <div id="cfipPanel" class="panel hidden">
-            <div class="panel-header">
+            <div class="panel-header" style="margin-bottom:12px">
                 <h2>CFIP(优选域名) 管理</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
                     <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('cfip')">➕ 添加</button>
@@ -949,6 +949,25 @@
                     <button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('cfip',false)">✗
                         禁用</button>
                     <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
+                </div>
+            </div>
+            <div
+                style="display:flex;gap:12px;margin-bottom:12px;align-items:center;background:#f7f9fc;padding:8px;border-radius:8px">
+                <div style="flex:1">
+                    <input type="text" placeholder="🔍 搜索 IP / 端口 / 备注..."
+                        style="width:100%;padding:6px 10px;border:1px solid #e1e8ed;border-radius:6px;font-size:13px"
+                        oninput="handleCFIPSearch(event)">
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666">
+                    每页显示:
+                    <select style="padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:13px"
+                        onchange="handleCFIPPageSize(event)">
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                    </select>
                 </div>
             </div>
             <div
@@ -973,6 +992,13 @@
                 </table>
             </div>
             <div id="cfipCardView" class="card-grid hidden"></div>
+
+            <div
+                style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:10px;background:#f7f9fc;border-radius:8px">
+                <button id="cfipPrevBtn" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">◀ 上一页</button>
+                <span id="cfipPageInfo" style="font-size:13px;color:#666">Page 1 of 1 (Total 0)</span>
+                <button id="cfipNextBtn" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页 ▶</button>
+            </div>
         </div>
 
         <div id="vlSubscribePanel" class="panel hidden">
@@ -1143,6 +1169,11 @@
         let apiKey = localStorage.getItem('apiKey'), modalType = '', editId = null;
         let showFullAddress = false; // 是否显示完整地址
         let globalViewMode = localStorage.getItem('globalViewMode') || 'list'; // 全局视图模式：list 或 card
+
+        // Global state for CFIP pagination and search
+        let cfipSearchText = '';
+        let cfipPageSize = 20;
+        let cfipCurrentPage = 1;
 
         // 全局缓存数据用于查重
         let cachedProxyIPs = [];
@@ -1626,8 +1657,30 @@
             const d = await api('/cfip');
             if (d.success) {
                 cachedCFIPs = d.data; // 更新缓存
+                renderCFIPs();
+            }
+        }
+
+        function renderCFIPs() {
+            if (!cachedCFIPs) return;
+
+            // Filter
+            let filteredData = cachedCFIPs;
+            if (cfipSearchText) {
+                filteredData = cachedCFIPs.filter(item => {
+                    const searchStr = (item.address + ' ' + item.port + ' ' + (item.remark || '')).toLowerCase();
+                    return searchStr.includes(cfipSearchText);
+                });
+            }
+
+            // Pagination
+            const startIndex = (cfipCurrentPage - 1) * cfipPageSize;
+            const endIndex = startIndex + cfipPageSize;
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            if (true) {
                 // 列表视图
-                document.getElementById('cfipTable').innerHTML = d.data.map(i => `<tr>
+                document.getElementById('cfipTable').innerHTML = pageData.map(i => `<tr>
 <td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
 <td>${i.id}</td>
 <td>${i.address}</td>
@@ -1640,7 +1693,7 @@
                 document.getElementById('cfipCheckAll').checked = false;
 
                 // 卡片视图
-                document.getElementById('cfipCardView').innerHTML = d.data.map(i => {
+                document.getElementById('cfipCardView').innerHTML = pageData.map(i => {
                     const statusClass = i.enabled ? 'online' : 'offline';
                     const statusText = i.enabled ? '已启用' : '已禁用';
                     return `<div class="outbound-card ${statusClass}" id="cfip-card-${i.id}">
@@ -1665,6 +1718,9 @@
 </div>
 </div>`;
                 }).join('');
+
+                // Update pagination controls
+                updateCFIPPaginationControls(filteredData.length);
 
                 // 根据当前视图模式显示对应的视图
                 if (globalViewMode === 'card') {
