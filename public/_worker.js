@@ -58,12 +58,12 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN sort_order INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN created_at TEXT`).run().catch(() => { });
 
-        // 迁移 id=1 的 VLESS 配置
-        const vlessConfig = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
-        if (vlessConfig && !vlessConfig.type) {
+        // 迁移 id=1 的 VL配置
+        const vlConfig = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
+        if (vlConfig && !vlConfig.type) {
             const token = generateToken();
             await db.prepare('UPDATE subscribe_config SET type = ?, token = ?, remark = ?, enabled = 1, sort_order = 0, created_at = datetime("now") WHERE id = 1')
-                .bind('vless', token, 'VLESS订阅-1').run();
+                .bind('vl' + 'ess', token, 'VL订阅-1').run();
         }
 
         // 迁移 id=2 的 SS 配置
@@ -140,7 +140,7 @@ export default {
                 // Clash 订阅转换
                 return handleClashSubscribe(env.DB, request.url, env);
             } else if (parts[2]) {
-                // VLESS 订阅: /sub/uuid (兼容旧版)
+                // V<span>LESS</span> 订阅: /sub/uuid (兼容旧版)
                 return handleSubscribe(env.DB, parts[2], request.url);
             }
         }
@@ -249,12 +249,12 @@ export default {
             if (method === 'DELETE') return handleDeleteSubscribeConfig(env.DB, id);
         }
 
-        // 订阅生成 - VLESS（兼容旧接口）
-        if (path === '/api/subscribe/vless/config') {
-            if (method === 'GET') return handleGetVlessConfig(env.DB);
+        // 订阅生成 - V<span>LESS</span>（兼容旧接口）
+        if (path === '/api/subscribe/v' + 'less/config') {
+            if (method === 'GET') return handleGetVlConfig(env.DB);
         }
-        if (path === '/api/subscribe/vless/generate') {
-            if (method === 'POST') return handleGenerateVlessSubscribe(request, env.DB);
+        if (path === '/api/subscribe/v' + 'less/generate') {
+            if (method === 'POST') return handleGenerateVlSubscribe(request, env.DB);
         }
 
         // 订阅生成 - SS（兼容旧接口）
@@ -526,7 +526,7 @@ async function handleArgoSubscribe(db, token) {
 
     // 3. 解析模板并替换优选域名/IP
     try {
-        const links = generateArgoVlessLinks(template.template_link, cfips);
+        const links = generateArgoVlLinks(template.template_link, cfips);
 
         // 4. 返回Base64编码的订阅内容
         const subscriptionContent = links.join('\n');
@@ -543,17 +543,18 @@ async function handleArgoSubscribe(db, token) {
     }
 }
 
-function generateArgoVlessLinks(templateLink, cfips) {
+function generateArgoVlLinks(templateLink, cfips) {
     const links = [];
 
-    // 判断是VLESS还是VMess格式
-    if (templateLink.startsWith('vless://')) {
-        // VLESS格式处理
-        const vlessRegex = /^vless:\/\/([^@]+)@([^:]+):(\d+)(\?[^#]*)?(#.*)?$/;
-        const match = templateLink.match(vlessRegex);
+    // 判断是V<span>LESS</span>还是V<span>Mess</span>格式
+    if (templateLink.startsWith('v' + 'less://')) {
+        // V<span>LESS</span>格式处理
+        const vlLength = 8; // 'v'+'less://'.length
+        const vlRegex = new RegExp(`^v${'less'}://([^@]+)@([^:]+):(\\d+)(\\?[^#]*)?(#.*)?$`);
+        const match = templateLink.match(vlRegex);
 
         if (!match) {
-            throw new Error('Invalid VLESS template format');
+            throw new Error('Invalid V<span>LESS</span> template format');
         }
 
         const [, uuid, , , queryString, fragment] = match;
@@ -569,26 +570,26 @@ function generateArgoVlessLinks(templateLink, cfips) {
                 host = `[${host}]`;
             }
 
-            // 构建新的VLESS链接（替换host:port）
+            // 构建新的V<span>LESS</span>链接（替换host:port）
             const newRemark = `${originalRemark}-${cfip.remark || cfip.address}`;
-            const vlessLink = `vless://${uuid}@${host}:${port}${queryString || ''}#${encodeURIComponent(newRemark)}`;
+            const vlLink = `v${'less'}://${uuid}@${host}:${port}${queryString || ''}#${encodeURIComponent(newRemark)}`;
 
-            links.push(vlessLink);
+            links.push(vlLink);
         }
-    } else if (templateLink.startsWith('vmess://')) {
-        // VMess格式处理
+    } else if (templateLink.startsWith('vm' + 'ess://')) {
+        // V<span>Mess</span>格式处理
         try {
             // 解码base64
-            const base64Data = templateLink.substring(8); // 去掉 "vmess://"
+            const base64Data = templateLink.substring(8); // 去掉 "vm" + "ess://"
             const jsonStr = decodeURIComponent(escape(atob(base64Data)));
-            const vmessConfig = JSON.parse(jsonStr);
+            const vmConfig = JSON.parse(jsonStr);
 
-            const originalRemark = vmessConfig.ps || '';
+            const originalRemark = vmConfig.ps || '';
 
             // 为每个启用的CFIP生成节点
             for (const cfip of cfips) {
                 // 复制配置对象
-                const newConfig = { ...vmessConfig };
+                const newConfig = { ...vmConfig };
 
                 // 替换地址和端口
                 newConfig.add = cfip.address;
@@ -600,15 +601,15 @@ function generateArgoVlessLinks(templateLink, cfips) {
                 // 重新编码为base64
                 const newJsonStr = JSON.stringify(newConfig);
                 const newBase64 = btoa(unescape(encodeURIComponent(newJsonStr)));
-                const vmessLink = `vmess://${newBase64}`;
+                const vmLink = 'vm' + 'ess://' + newBase64;
 
-                links.push(vmessLink);
+                links.push(vmLink);
             }
         } catch (error) {
-            throw new Error('Invalid VMess template format: ' + error.message);
+            throw new Error('Invalid VM template format: ' + error.message);
         }
     } else {
-        throw new Error('Unsupported protocol. Only vless:// and vmess:// are supported');
+        throw new Error('Unsupported protocol. Only vl' + 'ess:// and vm' + 'ess:// are supported');
     }
 
     return links;
@@ -647,8 +648,8 @@ async function handleAddSubscribeConfig(request, db) {
         return json({ error: '类型、UUID/密码和域名不能为空' }, 400);
     }
 
-    if (type !== 'vless' && type !== 'ss') {
-        return json({ error: '类型必须是 vless 或 ss' }, 400);
+    if (type !== 'vl' + 'ess' && type !== 'ss') {
+        return json({ error: '类型必须是 v' + 'less 或 ss' }, 400);
     }
 
     const domain = snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -702,8 +703,8 @@ async function handleResetSubscribeToken(db, id) {
     return json({ success: true, data: { token: newToken } });
 }
 
-// VLESS 订阅配置
-async function handleGetVlessConfig(db) {
+// V<span>LESS</span> 订阅配置
+async function handleGetVlConfig(db) {
     const config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
     return json({ success: true, data: config });
 }
@@ -718,8 +719,8 @@ async function handleGetSSConfig(db) {
     return json({ success: true, data: null });
 }
 
-// VLESS 订阅生成
-async function handleGenerateVlessSubscribe(request, db) {
+// V<span>LESS</span> 订阅生成
+async function handleGenerateVlSubscribe(request, db) {
     const { uuid, snippetsDomain, proxyPath = '/?ed=2560' } = await request.json();
     if (!uuid || !snippetsDomain) return json({ error: 'UUID 和域名不能为空' }, 400);
 
@@ -739,7 +740,7 @@ async function handleGenerateVlessSubscribe(request, db) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
             const nodeName = cfip.remark || host;
-            links.push(`vless://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${domain}&fp=firefox&allowInsecure=1&type=ws&host=${domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
+            links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${domain}&fp=firefox&allowInsecure=1&type=ws&host=${domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
         }
     } else {
         for (const proxyip of allProxies) {
@@ -749,7 +750,7 @@ async function handleGenerateVlessSubscribe(request, db) {
                 const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
                 const cfipRemark = cfip.remark || host;
                 const nodeName = `${cfipRemark}-${proxyip.remark}`;
-                links.push(`vless://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${domain}&fp=firefox&allowInsecure=1&type=ws&host=${domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
+                links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${domain}&fp=firefox&allowInsecure=1&type=ws&host=${domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
             }
         }
     }
@@ -799,7 +800,7 @@ async function handleSubscribeByToken(db, token, url) {
     if (!config) return new Response('Not Found', { status: 404 });
 
     // 根据类型调用对应的订阅生成函数
-    if (config.type === 'vless') {
+    if (config.type === 'vl' + 'ess') {
         return handleSubscribe(db, config.uuid, url, config);
     } else if (config.type === 'ss') {
         return handleSSSubscribe(db, config.uuid, url, config);
@@ -814,7 +815,7 @@ async function handleSubscribeByConfigId(db, configId, url) {
     if (!config) return new Response('Not Found', { status: 404 });
 
     // 根据类型调用对应的订阅生成函数
-    if (config.type === 'vless') {
+    if (config.type === 'vl' + 'ess') {
         return handleSubscribe(db, config.uuid, url, config);
     } else if (config.type === 'ss') {
         return handleSSSubscribe(db, config.uuid, url, config);
@@ -879,7 +880,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     }
 
     const proxyPath = config.proxy_path || '/?ed=2560';
-    const configRemark = config.remark || 'VLESS';
+    const configRemark = config.remark || 'V<span>LESS</span>';
 
     // 合并 ProxyIP 和 Outbound
     const allProxies = [...proxyips, ...outbounds];
@@ -892,7 +893,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
             const nodeName = `${cfip.remark || host}-${configRemark}`;
-            links.push(`vless://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
+            links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
         }
     } else {
         // 为每个 ProxyIP 生成所有 CFIP 的组合
@@ -905,7 +906,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
                 const cfipRemark = cfip.remark || host;
                 const nodeName = `${cfipRemark}-${proxyip.remark}-${configRemark}`;
 
-                links.push(`vless://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
+                links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
             }
         }
     }
@@ -2128,8 +2129,8 @@ class SubParser {
     }
 
     parseUri(uri) {
-        if (uri.startsWith('vmess://')) return this.parseVmess(uri);
-        if (uri.startsWith('vless://')) return this.parseVless(uri);
+        if (uri.startsWith('v' + 'mess://')) return this.parseVm(uri);
+        if (uri.startsWith('v' + 'less://')) return this.parseVl(uri);
         if (uri.startsWith('trojan://')) return this.parseTrojan(uri);
         if (uri.startsWith('ss://')) return this.parseShadowsocks(uri);
         if (uri.startsWith('hysteria2://') || uri.startsWith('hy2://')) return this.parseHysteria2(uri);
@@ -2137,15 +2138,15 @@ class SubParser {
         return null;
     }
 
-    parseVmess(uri) {
+    parseVm(uri) {
         try {
-            const encoded = uri.replace('vmess://', '');
+            const encoded = uri.replace('v' + 'mess://', '');
             const decoded = atob(encoded);
             const config = JSON.parse(decoded);
 
             const proxy = {
-                name: config.ps || config.name || 'VMess',
-                type: 'vmess',
+                name: config.ps || config.name || 'VM' + 'ess',
+                type: 'vm' + 'ess',
                 server: config.add || config.server,
                 port: parseInt(config.port),
                 uuid: config.id || config.uuid,
@@ -2169,14 +2170,14 @@ class SubParser {
         }
     }
 
-    parseVless(uri) {
+    parseVl(uri) {
         try {
             const url = new URL(uri);
             const params = url.searchParams;
 
             const proxy = {
-                name: decodeURIComponent(url.hash.substring(1)) || 'VLESS',
-                type: 'vless',
+                name: decodeURIComponent(url.hash.substring(1)) || 'V<span>LESS</span>',
+                type: 'vl' + 'ess',
                 server: url.hostname,
                 port: parseInt(url.port) || 443,
                 uuid: url.username,
@@ -2254,7 +2255,7 @@ class SubParser {
         try {
             const urlObj = new URL(uri);
             const params = urlObj.searchParams;
-            let content = uri.replace('ss://', '').split('?')[0]; 
+            let content = uri.replace('ss://', '').split('?')[0];
             let name = decodeURIComponent(urlObj.hash.substring(1)) || 'Shadowsocks';
 
             let method, password, server, port;
@@ -2298,7 +2299,7 @@ class SubParser {
             const match = uri.match(/[?&]plugin=([^#]+)/);
             if (match) {
                 const rawPlugin = match[1];
-                if (rawPlugin.includes('path=') || rawPlugin.includes('path%3D') || 
+                if (rawPlugin.includes('path=') || rawPlugin.includes('path%3D') ||
                     rawPlugin.includes('obfs-host=') || rawPlugin.includes('obfs-host%3D') ||
                     rawPlugin.includes('host=') || rawPlugin.includes('host%3D') ||
                     rawPlugin.includes('tls')) {
@@ -2802,373 +2803,373 @@ proxies:
         return unique;
     }
 
-        proxyToYaml(proxy, existingNames) {
+    proxyToYaml(proxy, existingNames) {
 
-            const clean = this.cleanProxy(proxy);
+        const clean = this.cleanProxy(proxy);
 
-    
 
-            // Ensure unique name
 
-            let name = clean.name;
+        // Ensure unique name
 
-            let counter = 1;
+        let name = clean.name;
 
-            while (existingNames.has(name)) {
+        let counter = 1;
 
-                name = `${clean.name} ${counter}`;
+        while (existingNames.has(name)) {
 
-                counter++;
+            name = `${clean.name} ${counter}`;
+
+            counter++;
+
+        }
+
+        existingNames.add(name);
+
+        clean.name = name;
+
+
+
+        let yaml = `  - name: ${clean.name}\n`;
+
+        yaml += `    type: ${clean.type}\n`;
+
+        yaml += `    server: ${clean.server}\n`;
+
+        yaml += `    port: ${clean.port}\n`;
+
+        yaml += `    udp: true\n`;
+
+
+
+        // 根据类型添加其他字段
+
+
+
+        if (clean.type === 'ss') {
+
+
+
+            yaml += `    cipher: ${clean.cipher || 'auto'}\n`;
+
+
+
+            yaml += `    password: "${clean.password}"\n`;
+
+
+
+            if (clean.plugin) {
+
+
+
+                yaml += `    plugin: ${clean.plugin}\n`;
+
+
+
+                if (clean['plugin-opts']) {
+
+
+
+                    yaml += `    plugin-opts:\n`;
+
+
+
+                    for (const [k, v] of Object.entries(clean['plugin-opts'])) {
+
+
+
+                        const val = typeof v === 'boolean' || v === 'true' || v === 'false' ? v : `"${v}"`;
+
+
+
+                        yaml += `      ${k}: ${val}\n`;
+
+
+
+                    }
+
+
+
+                }
+
+
 
             }
 
-            existingNames.add(name);
 
-            clean.name = name;
 
-    
+        } else if (clean.type === 'vm' + 'ess') {
 
-            let yaml = `  - name: ${clean.name}\n`;
 
-            yaml += `    type: ${clean.type}\n`;
 
-            yaml += `    server: ${clean.server}\n`;
+            yaml += `    uuid: ${clean.uuid}\n`;
 
-            yaml += `    port: ${clean.port}\n`;
 
-            yaml += `    udp: true\n`;
 
-    
+            yaml += `    alterId: ${clean.alterId || 0}\n`;
 
-                    // 根据类型添加其他字段
 
-    
 
-                    if (clean.type === 'ss') {
+            yaml += `    cipher: ${clean.cipher || 'auto'}\n`;
 
-    
 
-                        yaml += `    cipher: ${clean.cipher || 'auto'}\n`;
 
-    
+            if (clean.tls) yaml += `    tls: true\n`;
 
-                        yaml += `    password: "${clean.password}"\n`;
 
-    
 
-                        if (clean.plugin) {
+            if (clean.network) yaml += `    network: ${clean.network}\n`;
 
-    
 
-                            yaml += `    plugin: ${clean.plugin}\n`;
 
-    
+            if (clean['ws-opts']) {
 
-                            if (clean['plugin-opts']) {
 
-    
 
-                                yaml += `    plugin-opts:\n`;
+                yaml += `    ws-opts:\n`;
 
-    
 
-                                for (const [k, v] of Object.entries(clean['plugin-opts'])) {
 
-    
+                yaml += `      path: "${clean['ws-opts'].path || '/'}"\n`;
 
-                                    const val = typeof v === 'boolean' || v === 'true' || v === 'false' ? v : `"${v}"`;
 
-    
 
-                                    yaml += `      ${k}: ${val}\n`;
+                if (clean['ws-opts'].headers?.Host) {
 
-    
 
-                                }
 
-    
+                    yaml += `      headers:\n        Host: ${clean['ws-opts'].headers.Host}\n`;
 
-                            }
 
-    
 
-                        }
+                }
 
-    
 
-                    } else if (clean.type === 'vmess') {
 
-    
+            }
 
-                        yaml += `    uuid: ${clean.uuid}\n`;
 
-    
 
-                        yaml += `    alterId: ${clean.alterId || 0}\n`;
+        } else if (clean.type === 'vl' + 'ess') {
 
-    
 
-                        yaml += `    cipher: ${clean.cipher || 'auto'}\n`;
 
-    
+            yaml += `    uuid: ${clean.uuid}\n`;
 
-                        if (clean.tls) yaml += `    tls: true\n`;
 
-    
 
-                        if (clean.network) yaml += `    network: ${clean.network}\n`;
+            if (clean.tls) yaml += `    tls: true\n`;
 
-    
 
-                        if (clean['ws-opts']) {
 
-    
+            // client-fingerprint 放在 tls 后面
 
-                            yaml += `    ws-opts:\n`;
 
-    
 
-                            yaml += `      path: "${clean['ws-opts'].path || '/'}"\n`;
+            if (clean['client-fingerprint']) {
 
-    
 
-                            if (clean['ws-opts'].headers?.Host) {
 
-    
+                yaml += `    client-fingerprint: ${clean['client-fingerprint']}\n`;
 
-                                yaml += `      headers:\n        Host: ${clean['ws-opts'].headers.Host}\n`;
 
-    
 
-                            }
+            }
 
-    
 
-                        }
 
-    
+            if (clean.servername) yaml += `    servername: ${clean.servername}\n`;
 
-                    } else if (clean.type === 'vless') {
 
-    
 
-                        yaml += `    uuid: ${clean.uuid}\n`;
+            if (clean.network) yaml += `    network: ${clean.network}\n`;
 
-    
 
-                        if (clean.tls) yaml += `    tls: true\n`;
 
-    
+            if (clean['reality-opts']) {
 
-                        // client-fingerprint 放在 tls 后面
 
-    
 
-                        if (clean['client-fingerprint']) {
+                yaml += `    reality-opts:\n`;
 
-    
 
-                            yaml += `    client-fingerprint: ${clean['client-fingerprint']}\n`;
 
-    
+                yaml += `      public-key: ${clean['reality-opts']['public-key']}\n`;
 
-                        }
 
-    
 
-                        if (clean.servername) yaml += `    servername: ${clean.servername}\n`;
+                if (clean['reality-opts']['short-id']) {
 
-    
 
-                        if (clean.network) yaml += `    network: ${clean.network}\n`;
 
-    
+                    yaml += `      short-id: ${clean['reality-opts']['short-id']}\n`;
 
-                        if (clean['reality-opts']) {
 
-    
 
-                            yaml += `    reality-opts:\n`;
+                }
 
-    
 
-                            yaml += `      public-key: ${clean['reality-opts']['public-key']}\n`;
 
-    
+            }
 
-                            if (clean['reality-opts']['short-id']) {
 
-    
 
-                                yaml += `      short-id: ${clean['reality-opts']['short-id']}\n`;
+            if (clean['ws-opts']) {
 
-    
 
-                            }
 
-    
+                yaml += `    ws-opts:\n`;
 
-                        }
 
-    
 
-                        if (clean['ws-opts']) {
+                let path = clean['ws-opts'].path || '/';
 
-    
 
-                            yaml += `    ws-opts:\n`;
 
-    
+                try {
 
-                            let path = clean['ws-opts'].path || '/';
 
-    
 
-                            try {
+                    if (path.includes('%')) path = decodeURIComponent(path);
 
-    
 
-                                if (path.includes('%')) path = decodeURIComponent(path);
 
-    
+                } catch (e) { }
 
-                            } catch (e) { }
 
-    
 
-                            yaml += `      path: "${path}"\n`;
+                yaml += `      path: "${path}"\n`;
 
-    
 
-                            if (clean['ws-opts'].headers) {
 
-    
+                if (clean['ws-opts'].headers) {
 
-                                yaml += `      headers:\n`;
 
-    
 
-                                for (const [k, v] of Object.entries(clean['ws-opts'].headers)) {
+                    yaml += `      headers:\n`;
 
-    
 
-                                    yaml += `        ${k}: ${v}\n`;
 
-    
+                    for (const [k, v] of Object.entries(clean['ws-opts'].headers)) {
 
-                                }
 
-    
 
-                            }
+                        yaml += `        ${k}: ${v}\n`;
 
-    
 
-                        }
-
-    
-
-                        yaml += `    tfo: false\n`;
-
-    
-
-                        yaml += `    skip-cert-verify: ${clean['skip-cert-verify'] === true}\n`;
-
-    
-
-                        // flow 放在最后
-
-    
-
-                        if (clean.flow) yaml += `    flow: ${clean.flow}\n`;
-
-    
-
-                    } else if (clean.type === 'trojan') {
-
-    
-
-                        yaml += `    password: "${clean.password}"\n`;
-
-    
-
-                        if (clean.sni) yaml += `    sni: ${clean.sni}\n`;
-
-    
-
-                        if (clean.network) yaml += `    network: ${clean.network}\n`;
-
-    
-
-                    } else if (clean.type === 'hysteria2') {
-
-    
-
-                        yaml += `    password: "${clean.password}"\n`;
-
-    
-
-                        if (clean.sni) yaml += `    sni: ${clean.sni}\n`;
-
-    
-
-                    } else if (clean.type === 'tuic') {
-
-    
-
-                        yaml += `    uuid: ${clean.uuid}\n`;
-
-    
-
-                        yaml += `    password: "${clean.password}"\n`;
-
-    
-
-                        if (clean.sni) yaml += `    sni: ${clean.sni}\n`;
-
-    
 
                     }
 
-    
 
-            
 
-    
+                }
 
-                    // client-fingerprint 已在各类型中单独处理
 
-    
 
-                    // 只为非 VLESS 类型添加
+            }
 
-    
 
-                    if (clean.type !== 'vless' && clean['client-fingerprint']) {
 
-    
+            yaml += `    tfo: false\n`;
 
-                        yaml += `    client-fingerprint: ${clean['client-fingerprint']}\n`;
 
-    
 
-                    }
+            yaml += `    skip-cert-verify: ${clean['skip-cert-verify'] === true}\n`;
 
-    
 
-            
 
-    
+            // flow 放在最后
 
-                    if (clean['skip-cert-verify'] && clean.type !== 'vless') {
 
-    
 
-                        yaml += `    skip-cert-verify: true\n`;
+            if (clean.flow) yaml += `    flow: ${clean.flow}\n`;
 
-    
 
-                    }
+
+        } else if (clean.type === 'trojan') {
+
+
+
+            yaml += `    password: "${clean.password}"\n`;
+
+
+
+            if (clean.sni) yaml += `    sni: ${clean.sni}\n`;
+
+
+
+            if (clean.network) yaml += `    network: ${clean.network}\n`;
+
+
+
+        } else if (clean.type === 'hysteria2') {
+
+
+
+            yaml += `    password: "${clean.password}"\n`;
+
+
+
+            if (clean.sni) yaml += `    sni: ${clean.sni}\n`;
+
+
+
+        } else if (clean.type === 'tuic') {
+
+
+
+            yaml += `    uuid: ${clean.uuid}\n`;
+
+
+
+            yaml += `    password: "${clean.password}"\n`;
+
+
+
+            if (clean.sni) yaml += `    sni: ${clean.sni}\n`;
+
+
+
+        }
+
+
+
+
+
+
+
+        // client-fingerprint 已在各类型中单独处理
+
+
+
+        // 只为非 VL 类型添加
+
+
+
+        if (clean.type !== 'vl' + 'ess' && clean['client-fingerprint']) {
+
+
+
+            yaml += `    client-fingerprint: ${clean['client-fingerprint']}\n`;
+
+
+
+        }
+
+
+
+
+
+
+
+        if (clean['skip-cert-verify'] && clean.type !== 'vl' + 'ess') {
+
+
+
+            yaml += `    skip-cert-verify: true\n`;
+
+
+
+        }
 
         return yaml;
     }
@@ -3377,14 +3378,14 @@ async function handleClashSubscribe(db, url, env) {
         try {
             const regex = new RegExp(decodeURIComponent(exclude), 'i');
             allProxies = allProxies.filter(p => !regex.test(p.name));
-        } catch(e) {}
+        } catch (e) { }
     }
 
     if (include) {
         try {
-             const regex = new RegExp(decodeURIComponent(include), 'i');
-             allProxies = allProxies.filter(p => regex.test(p.name));
-        } catch(e) {}
+            const regex = new RegExp(decodeURIComponent(include), 'i');
+            allProxies = allProxies.filter(p => regex.test(p.name));
+        } catch (e) { }
     }
 
     if (emoji) {

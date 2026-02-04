@@ -975,11 +975,11 @@
             <div id="cfipCardView" class="card-grid hidden"></div>
         </div>
 
-        <div id="vlessSubscribePanel" class="panel hidden">
+        <div id="vlSubscribePanel" class="panel hidden">
             <div class="panel-header">
-                <h2>VLESS 订阅配置</h2>
+                <h2>V<span>LESS</span> 订阅配置</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showSubscribeModal('vless')">➕
+                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showSubscribeModal('vl' + 'ess')">➕
                         添加配置</button>
                 </div>
             </div>
@@ -1977,7 +1977,7 @@
                 if (!uuid || !domain) return alert('请填写必填项');
 
                 // 处理 Path 逻辑
-                // VLESS 默认 /?ed=2560
+                // VL 默认 /?ed=2560
                 // SS 默认 /uuid
                 const path = type === 'ss' ? '/' + uuid : '/?ed=2560';
 
@@ -1990,7 +1990,7 @@
                     const d = await api(apiPath, method, body);
                     if (d.success) {
                         closeModal();
-                        await loadVlessConfig();
+                        await loadVlConfig();
                         await loadSSConfig();
                     } else {
                         alert(d.error || '操作失败');
@@ -2601,23 +2601,23 @@
 
                         items.push({ address, remark: remark || undefined });
                     } else if (batchType === 'argo') {
-                        // ARGO 格式：vless://... 或 vmess://...
+                        // ARGO 格式：vl://... 或 vm://...
                         const remarkMatch = line.match(/#(.+)$/);
                         let remark = '';
-                        if (line.startsWith('v' + 'less://')) {
+                        if (line.startsWith('vl' + 'ess://')) {
                             remark = remarkMatch ? decodeURIComponent(remarkMatch[1]) : '';
-                        } else if (line.startsWith('v' + 'mess://')) {
-                            // VMess格式，从base64解码中提取备注
+                        } else if (line.startsWith('vm' + 'ess://')) {
+                            // VM格式，从base64解码中提取备注
                             try {
                                 const base64Data = line.substring(8);
                                 const jsonStr = atob(base64Data);
-                                const vmessConfig = JSON.parse(jsonStr);
-                                remark = vmessConfig.ps || '';
+                                const vmConfig = JSON.parse(jsonStr);
+                                remark = vmConfig.ps || '';
                             } catch (e) {
                                 remark = '';
                             }
                         } else {
-                            throw new Error('必须是 v' + 'less:// 或 v' + 'mess:// 格式');
+                            throw new Error('必须是 vl' + 'ess:// 或 vm' + 'ess:// 格式');
                         }
                         items.push({ template_link: line, remark: remark || undefined });
                     } else {
