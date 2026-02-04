@@ -1144,6 +1144,14 @@
         let showFullAddress = false; // 是否显示完整地址
         let globalViewMode = localStorage.getItem('globalViewMode') || 'list'; // 全局视图模式：list 或 card
 
+        // 全局缓存数据用于查重
+        let cachedProxyIPs = [];
+        let cachedOutbounds = [];
+        let cachedCFIPs = [];
+        let cachedArgoList = [];
+        let cachedVlConfigs = [];
+        let cachedSSConfigs = [];
+
         function showLoading() { document.getElementById('loadingOverlay').classList.remove('hidden') }
         function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden') }
 
@@ -1293,6 +1301,7 @@
         async function loadVlConfig() {
             const d = await api('/subscribe/config?type=' + 'vl' + 'ess');
             if (!d.success) return;
+            cachedVlConfigs = d.data; // 更新缓存
 
             const list = document.getElementById('vlConfigList');
             if (d.data.length === 0) {
@@ -1338,6 +1347,7 @@
         async function loadSSConfig() {
             const d = await api('/subscribe/config?type=ss');
             if (!d.success) return;
+            cachedSSConfigs = d.data; // 更新缓存
 
             const list = document.getElementById('ssConfigList');
             if (d.data.length === 0) {
@@ -1383,6 +1393,7 @@
         async function loadArgoSubscribes() {
             const d = await api('/argo');
             if (!d.success) return;
+            cachedArgoList = d.data; // 更新缓存
 
             const list = document.getElementById('argoConfigList');
             if (d.data.length === 0) {
@@ -1477,6 +1488,7 @@
         async function loadProxyIPs() {
             const d = await api('/proxyip');
             if (d.success) {
+                cachedProxyIPs = d.data; // 更新缓存
                 // 列表视图
                 document.getElementById('proxyipTable').innerHTML = d.data.map(i => `<tr id="proxy-${i.id}">
 <td><input type="checkbox" class="proxyip-check" value="${i.id}"></td>
@@ -1530,6 +1542,7 @@
         async function loadOutbounds() {
             const d = await api('/outbound');
             if (d.success) {
+                cachedOutbounds = d.data; // 更新缓存
                 // 列表视图
                 document.getElementById('outboundTable').innerHTML = d.data.map(i => {
                     let exitInfo = '-';
@@ -1612,6 +1625,7 @@
         async function loadCFIPs() {
             const d = await api('/cfip');
             if (d.success) {
+                cachedCFIPs = d.data; // 更新缓存
                 // 列表视图
                 document.getElementById('cfipTable').innerHTML = d.data.map(i => `<tr>
 <td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
@@ -1661,6 +1675,28 @@
                     document.getElementById('cfipCardView').classList.add('hidden');
                 }
             }
+        }
+
+        // 查重函数
+        function checkDuplicate(type, data) {
+            if (type === 'proxyip') {
+                return cachedProxyIPs.some(i => i.address === data.address);
+            } else if (type === 'outbound') {
+                return cachedOutbounds.some(i => i.address === data.address);
+            } else if (type === 'cfip') {
+                return cachedCFIPs.some(i => i.address === data.address && i.port === data.port);
+            } else if (type === 'argo') {
+                return cachedArgoList.some(i => i.template_link === data.template_link);
+            } else if (type === 'vl' + 'ess') {
+                // vless 使用域名查重
+                const domain = data.snippetsDomain || data.snippets_domain;
+                return cachedVlConfigs.some(i => i.snippets_domain === domain);
+            } else if (type === 'ss') {
+                // ss 使用域名查重
+                const domain = data.snippetsDomain || data.snippets_domain;
+                return cachedSSConfigs.some(i => i.snippets_domain === domain);
+            }
+            return false;
         }
 
         async function testSingleSocks5(id) {
@@ -1985,6 +2021,16 @@
                 const method = editId ? 'PUT' : 'POST';
                 const apiPath = editId ? `/subscribe/config/${editId}` : '/subscribe/config';
 
+                // 查重逻辑 (仅限新增)
+                if (!editId) {
+                    // 对于 VLESS/SS，使用域名查重
+                    const checkData = { snippets_domain: domain };
+
+                    if (checkDuplicate(type, checkData)) {
+                        return alert('重复添加：该域名已存在');
+                    }
+                }
+
                 showLoading();
                 try {
                     const d = await api(apiPath, method, body);
@@ -2010,6 +2056,13 @@
 
             const method = editId ? 'PUT' : 'POST';
             const path = editId ? '/' + modalType + '/' + editId : '/' + modalType;
+
+            // 查重逻辑 (仅限新增)
+            if (!editId) {
+                if (checkDuplicate(modalType, body)) {
+                    return alert('重复添加：该数据已存在');
+                }
+            }
 
             showLoading();
             try {
@@ -2642,15 +2695,55 @@
                 }
             }
 
-            if (errors.length > 0) {
-                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-error">' + errors.join('<br>') + '</div>';
+            // 批量查重
+            const uniqueItems = [];
+            // 用于检查本次批量中的重复项
+            const currentBatchKeys = new Set();
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                let isDup = false;
+                let key = '';
+
+                if (batchType === 'proxyip') {
+                    key = item.address;
+                } else if (batchType === 'outbound') {
+                    key = item.address;
+                } else if (batchType === 'cfip') {
+                    key = item.address + ':' + item.port;
+                } else if (batchType === 'argo') {
+                    key = item.template_link;
+                }
+
+                if (checkDuplicate(batchType, item)) {
+                    errors.push(`重复数据已跳过: ${key}`);
+                    isDup = true;
+                } else if (currentBatchKeys.has(key)) {
+                    errors.push(`本次批量重复已跳过: ${key}`);
+                    isDup = true;
+                }
+
+                if (!isDup) {
+                    uniqueItems.push(item);
+                    currentBatchKeys.add(key);
+                }
+            }
+
+            // 如果只有重复错误，且没有有效数据，则停止
+            if (uniqueItems.length === 0 && errors.length > 0) {
+                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-error">所有数据均为重复或格式错误<br>' + errors.join('<br>') + '</div>';
                 return;
+            }
+
+            // 如果有部分错误（格式错误或重复），但也有有效数据，显示错误提示但继续执行
+            if (errors.length > 0) {
+                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-warning">以下数据存在问题被跳过，将继续添加剩余数据：<br>' + errors.join('<br>') + '</div>';
             }
 
             // 批量添加
             showLoading();
             let success = 0, failed = 0;
-            for (const item of items) {
+            for (const item of uniqueItems) {
                 try {
                     const d = await api('/' + batchType, 'POST', item);
                     if (d.success) success++; else failed++;
