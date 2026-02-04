@@ -32,6 +32,16 @@ async function initDB(db) {
         // 列可能已存在，忽略错误
     }
 
+    // 为 cf_ips 表添加新列
+    try {
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN latency INTEGER`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN speed INTEGER`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN country TEXT`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN isp TEXT`).run().catch(() => { });
+    } catch (e) {
+        // 忽略错误
+    }
+
     // 迁移 proxy_ips 中的 socks5 和 http 数据到 outbounds
     try {
         const { results: socks5Data } = await db.prepare("SELECT * FROM proxy_ips WHERE type IN ('socks5', 'http', 'https')").all();
@@ -404,16 +414,16 @@ async function handleGetCFIPs(db) {
 }
 
 async function handleAddCFIP(request, db) {
-    const { address, port = 443, remark, enabled = true, sort_order = 0 } = await request.json();
+    const { address, port = 443, remark, enabled = true, sort_order = 0, latency, speed, country, isp } = await request.json();
     if (!address) return json({ error: '地址不能为空' }, 400);
 
     const max = await db.prepare('SELECT MAX(id) as m FROM cf_ips').first();
     const finalRemark = remark || `CFIP-${(max?.m || 0) + 1}`;
 
-    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
-        .bind(address, port, finalRemark, enabled ? 1 : 0, sort_order).run();
+    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, enabled, sort_order, latency, speed, country, isp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+        .bind(address, port, finalRemark, enabled ? 1 : 0, sort_order, latency || null, speed || null, country || null, isp || null).run();
 
-    return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark } });
+    return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark, latency, speed, country, isp } });
 }
 
 async function handleUpdateCFIP(request, db, id) {
@@ -424,6 +434,10 @@ async function handleUpdateCFIP(request, db, id) {
     if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
     if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled ? 1 : 0); }
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
+    if (body.latency !== undefined) { sets.push('latency = ?'); vals.push(body.latency); }
+    if (body.speed !== undefined) { sets.push('speed = ?'); vals.push(body.speed); }
+    if (body.country !== undefined) { sets.push('country = ?'); vals.push(body.country); }
+    if (body.isp !== undefined) { sets.push('isp = ?'); vals.push(body.isp); }
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
     sets.push('updated_at = datetime("now")');
@@ -517,7 +531,7 @@ async function handleArgoSubscribe(db, token) {
 
     // 2. 获取所有启用的CFIP
     const { results: cfips } = await db.prepare(
-        'SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY sort_order, id'
+        'SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id'
     ).all();
 
     if (!cfips || cfips.length === 0) {
@@ -727,7 +741,7 @@ async function handleGenerateVlSubscribe(request, db) {
     const domain = snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
     await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, updated_at) VALUES (1, ?, ?, ?, datetime("now"))').bind(uuid, domain, proxyPath).run();
 
-    const { results: cfips } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY sort_order, id').all();
+    const { results: cfips } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
     if (cfips.length === 0) return json({ error: '没有启用的 CFIP' }, 400);
 
     const { results: proxyips } = await db.prepare('SELECT * FROM proxy_ips WHERE enabled = 1 ORDER BY sort_order, id').all();
@@ -769,7 +783,7 @@ async function handleGenerateSSSubscribe(request, db) {
     // 保存配置，使用 uuid 字段存储 password
     await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, updated_at) VALUES (2, ?, ?, ?, datetime("now"))').bind(password, domain, finalPath).run();
 
-    const { results: cfips } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY sort_order, id').all();
+    const { results: cfips } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
     if (cfips.length === 0) return json({ error: '没有启用的 CFIP' }, 400);
 
     const method = 'none';
@@ -843,11 +857,11 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     if (cfipIds.length > 0) {
         // 指定了CFIP ID，获取指定的CFIP（不管启用状态）
         const placeholders = cfipIds.map(() => '?').join(',');
-        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY sort_order, id`).bind(...cfipIds).all();
+        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
         // 未指定CFIP ID，获取所有启用的CFIP
-        const { results } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY sort_order, id').all();
+        const { results } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
         cfips = results;
     }
 
@@ -935,11 +949,11 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
     if (cfipIds.length > 0) {
         // 指定了CFIP ID，获取指定的CFIP（不管启用状态）
         const placeholders = cfipIds.map(() => '?').join(',');
-        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY sort_order, id`).bind(...cfipIds).all();
+        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
         // 未指定CFIP ID，获取所有启用的CFIP
-        const { results } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY sort_order, id').all();
+        const { results } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
         cfips = results;
     }
 
