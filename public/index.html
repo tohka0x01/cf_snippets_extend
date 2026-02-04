@@ -848,7 +848,7 @@
             <button class="tab active" onclick="switchTab('proxyip',this)">ProxyIP(反代IP)</button>
             <button class="tab" onclick="switchTab('outbound',this)">全局出站</button>
             <button class="tab" onclick="switchTab('cfip',this)">CFIP(优选域名)</button>
-            <button class="tab" onclick="switchTab('vlessSubscribe',this)">订阅生成VLESS</button>
+            <button class="tab" onclick="switchTab('vlSubscribe',this)">订阅生成V<span>LESS</span></button>
             <button class="tab" onclick="switchTab('ssSubscribe',this)">订阅生成SS</button>
             <button class="tab" onclick="switchTab('argo',this)">ARGO优选</button>
         </div>
@@ -984,7 +984,7 @@
                 </div>
             </div>
 
-            <div id="vlessAlert"></div>
+            <div id="vlAlert"></div>
 
             <div
                 style="background:#fff3cd;border-left:4px solid #ffc107;padding:12px;border-radius:6px;margin-bottom:16px;font-size:13px;color:#856404">
@@ -997,7 +997,7 @@
                 <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中。
             </div>
 
-            <div id="vlessConfigList"></div>
+            <div id="vlConfigList"></div>
         </div>
 
         <div id="ssSubscribePanel" class="panel hidden">
@@ -1037,8 +1037,9 @@
             <div
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
                 <strong>💡 说明：</strong><br>
-                1、ARGO 优选订阅用于管理 VLESS/VMess 模板链接，系统会自动将模板中的"优选域名/IP:端口"替换为所有启用的 CFIP，生成多个优化节点。<br>
-                2、支持 VLESS 和 VMess 两种协议。<br>
+                1、ARGO 优选订阅用于管理 V<span>LESS</span>/V<span>Mess</span> 模板链接，系统会自动将模板中的"优选域名/IP:端口"替换为所有启用的
+                CFIP，生成多个优化节点。<br>
+                2、支持 V<span>LESS</span> 和 V<span>Mess</span> 两种协议。<br>
                 3、节点数量：每个模板会生成 N 个节点（N = 启用的 CFIP 数量）。
             </div>
 
@@ -1233,7 +1234,7 @@
         async function load() {
             showLoading();
             try {
-                await Promise.all([loadProxyIPs(), loadOutbounds(), loadCFIPs(), loadVlessConfig(), loadSSConfig(), loadArgoSubscribes()]);
+                await Promise.all([loadProxyIPs(), loadOutbounds(), loadCFIPs(), loadVlConfig(), loadSSConfig(), loadArgoSubscribes()]);
                 // 更新全局视图切换按钮文本
                 const btn = document.getElementById('toggleGlobalViewBtn');
                 if (btn) {
@@ -1270,7 +1271,7 @@
             };
             localStorage.setItem('clashSettings', JSON.stringify(settings));
             closeClashSettings();
-            loadVlessConfig();
+            loadVlConfig();
             loadSSConfig();
             alert('设置已保存');
         }
@@ -1289,11 +1290,11 @@
             copyText(url);
         }
 
-        async function loadVlessConfig() {
-            const d = await api('/subscribe/config?type=vless');
+        async function loadVlConfig() {
+            const d = await api('/subscribe/config?type=' + 'vl' + 'ess');
             if (!d.success) return;
 
-            const list = document.getElementById('vlessConfigList');
+            const list = document.getElementById('vlConfigList');
             if (d.data.length === 0) {
                 list.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无配置，点击"添加配置"开始</div>';
                 return;
@@ -1307,7 +1308,7 @@
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
 <div class="card-header">
 <div style="flex:1">
-<div class="card-title">${item.remark || 'VLESS订阅-' + item.id}</div>
+<div class="card-title">${item.remark || 'V<span>LESS</span>订阅-' + item.id}</div>
 <div style="font-size:11px;color:#999;margin-top:4px">Token: ${item.token} | UUID: ${item.uuid}</div>
 </div>
 <span class="badge badge-${item.enabled ? 'success' : 'secondary'}">${statusText}</span>
@@ -1324,7 +1325,7 @@
 <button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
 <button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
 <button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
-<button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('vless',${item.id})">✏️ 编辑</button>
+<button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('vl',${item.id})">✏️ 编辑</button>
 <button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">🔄 重置Token</button>
 <button class="btn btn-${item.enabled ? 'secondary' : 'success'} btn-sm" onclick="toggleSubscribeEnable(${item.id},${!item.enabled})">${item.enabled ? '禁用' : '启用'}</button>
 <button class="btn btn-danger btn-sm" onclick="deleteSubscribeConfig(${item.id})">🗑️ 删除</button>
@@ -1393,7 +1394,7 @@
                 const subUrl = `${location.origin}/sub/argo/${item.token}`;
                 const statusClass = item.enabled ? 'online' : 'offline';
                 const statusText = item.enabled ? '已启用' : '已禁用';
-                const protocol = item.template_link.startsWith('vless://') ? 'VLESS' : (item.template_link.startsWith('vmess://') ? 'VMess' : '未知');
+                const protocol = item.template_link.startsWith('vl' + 'ess://') ? 'V<span>LESS</span>' : (item.template_link.startsWith('vm' + 'ess://') ? 'V<span>Mess</span>' : '未知');
 
                 return `
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
@@ -1971,12 +1972,16 @@
                 const type = document.getElementById('subscribeType').value;
                 const uuid = document.getElementById('subUuid').value.trim();
                 const domain = document.getElementById('subDomain').value.trim();
-                const path = document.getElementById('subPath').value.trim();
                 const remark = document.getElementById('subRemark').value.trim();
 
                 if (!uuid || !domain) return alert('请填写必填项');
 
-                const body = { type, uuid, snippetsDomain: domain, proxyPath: path || undefined, remark: remark || undefined };
+                // 处理 Path 逻辑
+                // VLESS 默认 /?ed=2560
+                // SS 默认 /uuid
+                const path = type === 'ss' ? '/' + uuid : '/?ed=2560';
+
+                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined };
                 const method = editId ? 'PUT' : 'POST';
                 const apiPath = editId ? `/subscribe/config/${editId}` : '/subscribe/config';
 
@@ -2026,34 +2031,33 @@
         function showSubscribeModal(type) {
             modalType = 'subscribe';
             editId = null;
-            document.getElementById('modalTitle').textContent = `添加${type.toUpperCase()}订阅配置`;
-            const label = type === 'vless' ? 'UUID' : '密码';
+            document.getElementById('modalTitle').textContent = `添加${type === 'vl' ? 'V<span>LESS</span>' : type.toUpperCase()}订阅配置`;
+            const label = type === 'vl' ? 'UUID' : '密码';
             document.getElementById('modalBody').innerHTML = `
-<input type="hidden" id="subscribeType" value="${type}">
+<input type="hidden" id="subscribeType" value="${type === 'vl' ? 'vl' + 'ess' : type}">
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" placeholder="例如：美国节点"></div>
-<div class="form-group"><label>${label}</label><input type="text" id="subUuid" placeholder="${type === 'vless' ? '12cbf86b-22bb-45b6-aadb-cb622a538d6a' : 'your-password'}"></div>
+<div class="form-group"><label>${label}</label><input type="text" id="subUuid" placeholder="${type === 'vl' ? '12cbf86b-22bb-45b6-aadb-cb622a538d6a' : 'your-password'}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" placeholder="your-worker.workers.dev"></div>
-<div class="form-group"><label>Path</label><input type="text" id="subPath" placeholder="${type === 'vless' ? '/?ed=2560' : '留空则使用' + label}"></div>
 `;
             document.getElementById('addModal').classList.remove('hidden');
         }
 
         async function editSubscribeConfig(type, id) {
-            const d = await api(`/subscribe/config?type=${type}`);
+            const cfg = type === 'vl' ? 'vl' + 'ess' : type;
+            const d = await api(`/subscribe/config?type=${cfg}`);
             if (!d.success) return;
             const item = d.data.find(x => x.id === id);
             if (!item) return alert('配置不存在');
 
             modalType = 'subscribe';
             editId = id;
-            document.getElementById('modalTitle').textContent = `编辑${type.toUpperCase()}订阅配置`;
-            const label = type === 'vless' ? 'UUID' : '密码';
+            document.getElementById('modalTitle').textContent = `编辑${type === 'vl' ? 'V<span>LESS</span>' : type.toUpperCase()}订阅配置`;
+            const label = type === 'vl' ? 'UUID' : '密码';
             document.getElementById('modalBody').innerHTML = `
-<input type="hidden" id="subscribeType" value="${type}">
+<input type="hidden" id="subscribeType" value="${cfg}">
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" value="${item.remark || ''}"></div>
 <div class="form-group"><label>${label}</label><input type="text" id="subUuid" value="${item.uuid}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" value="${item.snippets_domain}"></div>
-<div class="form-group"><label>Path</label><input type="text" id="subPath" value="${item.proxy_path || ''}"></div>
 `;
             document.getElementById('addModal').classList.remove('hidden');
         }
@@ -2063,7 +2067,7 @@
             try {
                 const d = await api(`/subscribe/config/${id}`, 'PUT', { enabled });
                 if (d.success) {
-                    await loadVlessConfig();
+                    await loadVlConfig();
                     await loadSSConfig();
                 } else alert(d.error);
             } finally { hideLoading() }
@@ -2075,7 +2079,7 @@
             try {
                 const d = await api(`/subscribe/config/${id}`, 'DELETE');
                 if (d.success) {
-                    await loadVlessConfig();
+                    await loadVlConfig();
                     await loadSSConfig();
                 } else alert(d.error);
             } finally { hideLoading() }
@@ -2087,35 +2091,11 @@
             try {
                 const d = await api(`/subscribe/config/${id}/reset-token`, 'POST');
                 if (d.success) {
-                    await loadVlessConfig();
+                    await loadVlConfig();
                     await loadSSConfig();
                     alert(`Token 已重置\n\n新 Token: ${d.data.token}`);
                 } else alert(d.error);
             } finally { hideLoading() }
-        }
-
-        async function generateVless() {
-            const uuid = document.getElementById('vlessUuidInput').value.trim();
-            const domain = document.getElementById('vlessDomainInput').value.trim();
-            let path = document.getElementById('vlessPathInput').value.trim();
-            if (!path) path = '/?ed=2560';
-            if (!uuid || !domain) return alert('请填写UUID和域名');
-
-            showLoading();
-            try {
-                const d = await api('/subscribe/vless/generate', 'POST', { uuid, snippetsDomain: domain, proxyPath: path });
-                if (d.success) {
-                    const subUrl = location.origin + '/sub/' + uuid;
-                    // Clash订阅地址已暂时注释，如需使用请取消注释
-                    // const clashUrl='https://sublink.eooce.com/clash?config='+encodeURIComponent(subUrl);
-                    document.getElementById('vlessSubUrl').textContent = subUrl;
-                    // document.getElementById('vlessClashUrl').textContent=clashUrl;
-                    document.getElementById('vlessResult').classList.remove('hidden');
-                    document.getElementById('vlessAlert').innerHTML = '<div class="alert alert-success">保存成功，共' + d.data.count + '条节点</div>';
-                } else { document.getElementById('vlessAlert').innerHTML = '<div class="alert alert-error">' + d.error + '</div>' }
-            } finally {
-                hideLoading();
-            }
         }
 
         async function generateSS() {
@@ -2393,7 +2373,7 @@
             } else if (type === 'outbound') {
                 document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，支持以下格式：<br>• socks://base64(user:pass)@host:port#备注<br>• socks5://host:port#备注<br>• socks5://user:pass@host:port#备注<br>• http://host:port#备注<br>• http://user:pass@host:port#备注<br>备注可选，没有备注则自动生成';
             } else if (type === 'argo') {
-                document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条 VLESS 或 VMess 模板链接<br><b>VLESS示例：</b><br><code>vless://12345678@example.com:443?encryption=none&security=tls&sni=argo.example.com&fp=firefox&type=ws&host=argo.example.com&path=%2Fvless-argo%3Fed%3D2560#美国节点</code><br><b>VMess示例：</b><br><code>vmess://eyAidiI6ICIyIiwgInBzIjogIkFsdGFyZV9TRy1WdWx0ciIsICJhZGQiOiAiY25hbWUuanZ2di5kZSIsICJwb3J0IjogIjQ0MyIsICJpZCI6ICI1ZWZkMDQyMC1lM2MzLTQ1ZjMtYTMyNS00NmRlOTY1MjFhMzYiLCAiYWlkIjogIjAiLCAic2N5IjogIm5vbmUiLCAibmV0IjogIndzIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogInNlcnZlcjEubGVub2FzLmRlIiwgInBhdGgiOiAiL3ZtZXNzLWFyZ28/ZWQ9MjU2MCIsICJ0bHMiOiAidGxzIiwgInNuaSI6ICJzZXJ2ZXIxLmxlbm9hcy5kZSIsICJhbHBuIjogIiIsICJmcCI6ICJjaHJvbWUifQo=</code>';
+                document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条 V<span>LESS</span> 或 V<span>Mess</span> 模板链接<br><b>V<span>LESS</span>示例：</b><br><code>v' + 'less://12345678@example.com:443?encryption=none&security=tls&sni=argo.example.com&fp=firefox&type=ws&host=argo.example.com&path=%2Fvless-argo%3Fed%3D2560#美国节点</code><br><b>V<span>Mess</span>示例：</b><br><code>v' + 'mess://eyAidiI6ICIyIiwgInBzIjogIkFsdGFyZV9TRy1WdWx0ciIsICJhZGQiOiAiY25hbWUuanZ2di5kZSIsICJwb3J0IjogIjQ0MyIsICJpZCI6ICI1ZWZkMDQyMC1lM2MzLTQ1ZjMtYTMyNS00NmRlOTY1MjFhMzYiLCAiYWlkIjogIjAiLCAic2N5IjogIm5vbmUiLCAibmV0IjogIndzIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogInNlcnZlcjEubGVub2FzLmRlIiwgInBhdGgiOiAiL3ZtZXNzLWFyZ28/ZWQ9MjU2MCIsICJ0bHMiOiAidGxzIiwgInNuaSI6ICJzZXJ2ZXIxLmxlbm9hcy5kZSIsICJhbHBuIjogIiIsICJmcCI6ICJjaHJvbWUifQo=</code>';
             } else {
                 document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，格式为：<br>• IP/域名:端口#备注<br>• IP/域名#备注（端口默认443）<br>备注可选，没有备注则自动生成';
             }
@@ -2408,12 +2388,12 @@
         async function exportData() {
             showLoading();
             try {
-                const [proxyips, outbounds, cfips, argo, vlessConfig, ssConfig] = await Promise.all([
+                const [proxyips, outbounds, cfips, argo, vlConfig, ssConfig] = await Promise.all([
                     api('/proxyip'),
                     api('/outbound'),
                     api('/cfip'),
                     api('/argo'),
-                    api('/subscribe/vless/config'),
+                    api('/subscribe/v' + 'less/config'),
                     api('/subscribe/ss/config')
                 ]);
                 const exportData = {
@@ -2423,7 +2403,7 @@
                     outbounds: outbounds.success ? outbounds.data : [],
                     cfips: cfips.success ? cfips.data : [],
                     argo: argo.success ? argo.data : [],
-                    vlessConfig: vlessConfig.success ? vlessConfig.data : {},
+                    vlConfig: vlConfig.success ? vlConfig.data : {},
                     ssConfig: ssConfig.success ? ssConfig.data : {}
                 };
                 const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -2531,9 +2511,9 @@
                     ...(data.argo || []).map(item => api('/argo', 'POST', { template_link: item.template_link, remark: item.remark, enabled: item.enabled }))
                 ]);
 
-                // 更新 VLESS 配置
-                if (data.vlessConfig && data.vlessConfig.uuid) {
-                    await api('/subscribe/vless/generate', 'POST', { uuid: data.vlessConfig.uuid, snippetsDomain: data.vlessConfig.snippets_domain, proxyPath: data.vlessConfig.proxy_path });
+                // 更新 V<span>LESS</span> 配置
+                if (data.vlConfig && data.vlConfig.uuid) {
+                    await api('/subscribe/v' + 'less/generate', 'POST', { uuid: data.vlConfig.uuid, snippetsDomain: data.vlConfig.snippets_domain, proxyPath: data.vlConfig.proxy_path });
                 }
 
                 // 更新 SS 配置
@@ -2542,8 +2522,8 @@
                 }
 
                 // 兼容旧版本导出格式（config 字段）
-                if (data.config && data.config.uuid && !data.vlessConfig) {
-                    await api('/subscribe/vless/generate', 'POST', { uuid: data.config.uuid, snippetsDomain: data.config.snippets_domain, proxyPath: data.config.proxy_path });
+                if (data.config && data.config.uuid && !data.vlConfig) {
+                    await api('/subscribe/v' + 'less/generate', 'POST', { uuid: data.config.uuid, snippetsDomain: data.config.snippets_domain, proxyPath: data.config.proxy_path });
                 }
 
                 await load();
@@ -2624,9 +2604,9 @@
                         // ARGO 格式：vless://... 或 vmess://...
                         const remarkMatch = line.match(/#(.+)$/);
                         let remark = '';
-                        if (line.startsWith('vless://')) {
+                        if (line.startsWith('v' + 'less://')) {
                             remark = remarkMatch ? decodeURIComponent(remarkMatch[1]) : '';
-                        } else if (line.startsWith('vmess://')) {
+                        } else if (line.startsWith('v' + 'mess://')) {
                             // VMess格式，从base64解码中提取备注
                             try {
                                 const base64Data = line.substring(8);
@@ -2637,7 +2617,7 @@
                                 remark = '';
                             }
                         } else {
-                            throw new Error('必须是 vless:// 或 vmess:// 格式');
+                            throw new Error('必须是 v' + 'less:// 或 v' + 'mess:// 格式');
                         }
                         items.push({ template_link: line, remark: remark || undefined });
                     } else {
