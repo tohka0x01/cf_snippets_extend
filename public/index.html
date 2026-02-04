@@ -1733,6 +1733,37 @@
             }
         }
 
+
+
+        function handleCFIPSearch(e) {
+            cfipSearchText = e.target.value.trim().toLowerCase();
+            cfipCurrentPage = 1;
+            renderCFIPs();
+        }
+
+        function handleCFIPPageSize(e) {
+            cfipPageSize = parseInt(e.target.value);
+            cfipCurrentPage = 1;
+            renderCFIPs();
+        }
+
+        function changeCFIPPage(delta) {
+            cfipCurrentPage += delta;
+            renderCFIPs();
+        }
+
+        function updateCFIPPaginationControls(totalItems) {
+            const totalPages = Math.ceil(totalItems / cfipPageSize) || 1;
+
+            // Adjust current page if out of bounds
+            if (cfipCurrentPage < 1) cfipCurrentPage = 1;
+            if (cfipCurrentPage > totalPages) cfipCurrentPage = totalPages;
+
+            document.getElementById('cfipPageInfo').textContent = `Page ${cfipCurrentPage} of ${totalPages} (Total ${totalItems})`;
+            document.getElementById('cfipPrevBtn').disabled = cfipCurrentPage <= 1;
+            document.getElementById('cfipNextBtn').disabled = cfipCurrentPage >= totalPages;
+        }
+
         // 查重函数
         function checkDuplicate(type, data) {
             if (type === 'proxyip') {
