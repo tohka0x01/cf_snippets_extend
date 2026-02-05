@@ -2666,7 +2666,7 @@
             } else if (type === 'argo') {
                 document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条 V<span>LESS</span> 或 V<span>Mess</span> 模板链接<br><b>V<span>LESS</span>示例：</b><br><code>v' + 'less://12345678@example.com:443?encryption=none&security=tls&sni=argo.example.com&fp=firefox&type=ws&host=argo.example.com&path=%2Fvless-argo%3Fed%3D2560#美国节点</code><br><b>V<span>Mess</span>示例：</b><br><code>v' + 'mess://eyAidiI6ICIyIiwgInBzIjogIkFsdGFyZV9TRy1WdWx0ciIsICJhZGQiOiAiY25hbWUuanZ2di5kZSIsICJwb3J0IjogIjQ0MyIsICJpZCI6ICI1ZWZkMDQyMC1lM2MzLTQ1ZjMtYTMyNS00NmRlOTY1MjFhMzYiLCAiYWlkIjogIjAiLCAic2N5IjogIm5vbmUiLCAibmV0IjogIndzIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogInNlcnZlcjEubGVub2FzLmRlIiwgInBhdGgiOiAiL3ZtZXNzLWFyZ28/ZWQ9MjU2MCIsICJ0bHMiOiAidGxzIiwgInNuaSI6ICJzZXJ2ZXIxLmxlbm9hcy5kZSIsICJhbHBuIjogIiIsICJmcCI6ICJjaHJvbWUifQo=</code>';
             } else {
-                document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，格式为：<br>• IP/域名#名字#备注<br>• IP/域名 (端口在导入后统一修改，默认443)<br>名字和备注可选，名字不自动生成，备注默认为空';
+                document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，格式为：<br>• IP/域名#名字#备注<br>• IP/域名:端口#名字#备注<br>名字和备注可选，名字不自动生成，备注默认为空';
             }
             document.getElementById('batchModal').classList.remove('hidden');
         }
