@@ -944,10 +944,13 @@
                 <h2>CFIP(优选域名) 管理</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
                     <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('cfip')">➕ 添加</button>
-                    <button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('cfip',true)">✓
-                        启用</button>
-                    <button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('cfip',false)">✗
-                        禁用</button>
+                    <select id="cfipBatchStatus"
+                        style="padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:12px">
+                        <option value="enabled">启用</option>
+                        <option value="disabled">禁用</option>
+                        <option value="invalid">失效</option>
+                    </select>
+                    <button class="btn btn-info btn-sm" data-icon="✓" onclick="batchSetStatus('cfip')">设置状态</button>
                     <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
                 </div>
             </div>
@@ -2943,6 +2946,45 @@
             for (const cb of checks) {
                 try {
                     const d = await api('/' + type + '/' + cb.value, 'PUT', { enabled });
+                    if (d.success) success++; else failed++;
+                } catch (e) {
+                    failed++;
+                }
+            }
+            hideLoading();
+
+            alert(`操作完成：成功 ${success} 条${failed > 0 ? '，失败 ' + failed + ' 条' : ''}`);
+            if (type === 'proxyip') await loadProxyIPs();
+            else if (type === 'outbound') await loadOutbounds();
+            else if (type === 'argo') await loadArgoSubscribes();
+            else await loadCFIPs();
+        }
+
+        async function batchSetStatus(type) {
+            const statusSelect = document.getElementById(type + 'BatchStatus');
+            const status = statusSelect ? statusSelect.value : 'enabled';
+            const className = type === 'proxyip' ? 'proxyip-check' : type === 'outbound' ? 'outbound-check' : type === 'argo' ? 'argo-check' : 'cfip-check';
+
+            // 只选择可见的复选框（排除隐藏的视图）
+            const checks = Array.from(document.querySelectorAll('.' + className + ':checked')).filter(cb => {
+                let el = cb;
+                while (el) {
+                    if (el.classList && el.classList.contains('hidden')) return false;
+                    el = el.parentElement;
+                }
+                return true;
+            });
+            if (checks.length === 0) return alert('请先选择要修改的项');
+
+            const statusNames = { enabled: '启用', disabled: '禁用', invalid: '失效' };
+            if (!confirm(`确定将选中的 ${checks.length} 项设置为"${statusNames[status]}"状态？`)) return;
+
+            showLoading();
+            let success = 0, failed = 0;
+            const enabled = status === 'enabled';
+            for (const cb of checks) {
+                try {
+                    const d = await api('/' + type + '/' + cb.value, 'PUT', { status, enabled });
                     if (d.success) success++; else failed++;
                 } catch (e) {
                     failed++;

@@ -45,6 +45,16 @@ async function initDB(db) {
         // 忽略错误
     }
 
+    // 迁移数据: enabled -> status, remark -> name
+    try {
+        // 将 enabled 迁移到 status (仅当 status 为空或默认值时)
+        await db.prepare(`UPDATE cf_ips SET status = CASE WHEN enabled = 1 THEN 'enabled' ELSE 'disabled' END WHERE status IS NULL OR status = 'enabled'`).run().catch(() => { });
+        // 将 remark 迁移到 name (仅当 name 为空时)
+        await db.prepare(`UPDATE cf_ips SET name = remark, remark = NULL WHERE name IS NULL AND remark IS NOT NULL`).run().catch(() => { });
+    } catch (e) {
+        // 忽略错误
+    }
+
     // 迁移 proxy_ips 中的 socks5 和 http 数据到 outbounds
     try {
         const { results: socks5Data } = await db.prepare("SELECT * FROM proxy_ips WHERE type IN ('socks5', 'http', 'https')").all();
