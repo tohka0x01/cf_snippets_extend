@@ -110,6 +110,48 @@ function parseOutboundType(addr) {
     return 'unknown';
 }
 
+// Parse cfipStatus parameter to get status conditions
+// cfipStatus=enabled -> enabled CFIPs only
+// cfipStatus=disabled -> disabled CFIPs only
+// cfipStatus=invalid -> invalid CFIPs only
+// cfipStatus=enabled,disabled -> enabled + disabled
+// Returns SQL WHERE conditions array
+function parseCfipStatusConditions(cfipStatusParam) {
+    const conditions = [];
+    if (!cfipStatusParam) {
+        // Default: enabled only
+        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+        return conditions;
+    }
+
+    const statusList = cfipStatusParam.split(',').map(s => s.trim().toLowerCase());
+
+    for (const status of statusList) {
+        switch (status) {
+            case 'enabled':
+            case '1':
+                conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+                break;
+            case 'disabled':
+            case '0':
+                conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
+                break;
+            case 'invalid':
+            case 'death_reprieve':
+            case '2':
+                conditions.push("status = 'invalid'");
+                break;
+        }
+    }
+
+    // If no valid statuses, default to enabled
+    if (conditions.length === 0) {
+        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+    }
+
+    return conditions;
+}
+
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -519,35 +561,13 @@ async function handleArgoSubscribe(db, token, url) {
         return new Response('Subscription not found', { status: 404 });
     }
 
-    // 解析URL参数中的 status
+    // 解析URL参数中的 cfipStatus (支持旧的 status 参数作为后备)
     const urlParams = new URL(url).searchParams;
-    const statusParam = urlParams.get('status');
-    let statusList = ['enabled']; // 默认只获取 enabled
+    const cfipStatusParam = urlParams.get('cfipStatus') || urlParams.get('status');
 
-    if (statusParam) {
-        statusList = statusParam.split(',').map(s => s === 'death_reprieve' ? 'invalid' : s);
-    }
-
-    // 构建查询条件
-    let query = 'SELECT * FROM cf_ips WHERE ';
-    let conditions = [];
-
-    if (statusList.includes('enabled')) {
-        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
-    }
-    if (statusList.includes('disabled')) {
-        conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
-    }
-    if (statusList.includes('invalid')) {
-        conditions.push("status = 'invalid'");
-    }
-
-    // 如果没有有效条件，回退到默认
-    if (conditions.length === 0) {
-        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
-    }
-
-    query += `(${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
+    // 使用 parseCfipStatusConditions 解析状态条件
+    const conditions = parseCfipStatusConditions(cfipStatusParam);
+    const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
 
     // 2. 获取符合条件的CFIP
     const { results: cfips } = await db.prepare(query).all();
@@ -903,6 +923,10 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
 
+    // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
+    // 支持旧的 status 参数作为后备
+    const cfipStatusParam = urlParams.get('cfipStatus') || urlParams.get('status');
+
     // 获取CFIP列表
     let cfips = [];
     if (cfipIds.length > 0) {
@@ -911,32 +935,9 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
-        // 未指定CFIP ID，根据 status 筛选
-        const statusParam = urlParams.get('status');
-        let statusList = ['enabled']; // 默认只获取 enabled
-        if (statusParam) {
-            statusList = statusParam.split(',').map(s => s === 'death_reprieve' ? 'invalid' : s);
-        }
-
-        let query = 'SELECT * FROM cf_ips WHERE ';
-        let conditions = [];
-
-        if (statusList.includes('enabled')) {
-            conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
-        }
-        if (statusList.includes('disabled')) {
-            conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
-        }
-        if (statusList.includes('invalid')) {
-            conditions.push("status = 'invalid'");
-        }
-
-        if (conditions.length === 0) {
-            conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
-        }
-
-        query += `(${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
-
+        // 未指定CFIP ID，根据 cfipStatus 筛选
+        const conditions = parseCfipStatusConditions(cfipStatusParam);
+        const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
         const { results } = await db.prepare(query).all();
         cfips = results;
     }
@@ -1020,6 +1021,9 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
 
+    // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
+    const cfipStatusParam = urlParams.get('cfipStatus');
+
     // 获取CFIP列表
     let cfips = [];
     if (cfipIds.length > 0) {
@@ -1028,8 +1032,10 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
         const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
-        // 未指定CFIP ID，获取所有启用的CFIP
-        const { results } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
+        // 未指定CFIP ID，根据 cfipStatus 筛选
+        const conditions = parseCfipStatusConditions(cfipStatusParam);
+        const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
+        const { results } = await db.prepare(query).all();
         cfips = results;
     }
 
