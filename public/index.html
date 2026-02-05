@@ -958,11 +958,15 @@
                         style="width:100%;padding:6px 10px;border:1px solid #e1e8ed;border-radius:6px;font-size:13px"
                         oninput="handleCFIPSearch(event)">
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:#666;border-left:1px solid #e1e8ed;padding-left:12px">
+                <div
+                    style="display:flex;align-items:center;gap:12px;font-size:13px;color:#666;border-left:1px solid #e1e8ed;padding-left:12px">
                     <span>状态:</span>
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="enabled" checked onchange="handleCFIPStatusChange(event)"> 启用</label>
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="disabled" checked onchange="handleCFIPStatusChange(event)"> 禁用</label>
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="invalid" checked onchange="handleCFIPStatusChange(event)"> 失效</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            value="enabled" checked onchange="handleCFIPStatusChange(event)"> 启用</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            value="disabled" checked onchange="handleCFIPStatusChange(event)"> 禁用</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            value="invalid" checked onchange="handleCFIPStatusChange(event)"> 失效</label>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666">
                     每页显示:
@@ -987,7 +991,8 @@
                         <tr>
                             <th><input type="checkbox" id="cfipCheckAll" onchange="checkAll('cfip',this.checked)"></th>
                             <th>ID</th>
-                            <th>别名/备注</th>
+                            <th>别名 (Name)</th>
+                            <th>备注 (Remark)</th>
                             <th>地址</th>
                             <th>端口</th>
                             <th>失败次数</th>
@@ -1699,21 +1704,26 @@
                 // 列表视图
                 document.getElementById('cfipTable').innerHTML = pageData.map(i => {
                     const status = i.status || (i.enabled ? 'enabled' : 'disabled');
-                    let statusBadge = '';
-                    if (status === 'enabled') statusBadge = '<span class="badge badge-success">启用</span>';
-                    else if (status === 'disabled') statusBadge = '<span class="badge badge-secondary">禁用</span>';
-                    else if (status === 'invalid') statusBadge = '<span class="badge badge-danger">失效</span>';
-                    
-                    const nameDisplay = i.name ? `<div><span style="font-weight:bold">${i.name}</span></div><div style="font-size:11px;color:#999">${i.remark||'-'}</div>` : (i.remark || '-');
+                    let statusColor = '#999';
+                    if (status === 'enabled') statusColor = '#48c774';
+                    else if (status === 'disabled') statusColor = '#b5b5b5';
+                    else if (status === 'invalid') statusColor = '#f14668';
 
                     return `<tr>
 <td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
 <td>${i.id}</td>
-<td>${nameDisplay}</td>
+<td style="font-weight:bold">${i.name || '-'}</td>
+<td>${i.remark || '-'}</td>
 <td>${i.address}</td>
 <td>${i.port}</td>
 <td>${i.fail_count || 0}</td>
-<td>${statusBadge}</td>
+<td>
+    <select onchange="updateStatus('cfip', ${i.id}, this.value)" style="padding:2px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:${statusColor};border-color:${statusColor}">
+        <option value="enabled" ${status === 'enabled' ? 'selected' : ''}>启用</option>
+        <option value="disabled" ${status === 'disabled' ? 'selected' : ''}>禁用</option>
+        <option value="invalid" ${status === 'invalid' ? 'selected' : ''}>失效</option>
+    </select>
+</td>
 <td class="actions">
 <button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}', '${(i.remark || '').replace(/'/g, "\\\\'")}', ${i.port}, '${(i.name || '').replace(/'/g, "\\\\'")}')">✏️ 编辑</button>
 </td></tr>`;
@@ -1724,7 +1734,7 @@
                 document.getElementById('cfipCardView').innerHTML = pageData.map(i => {
                     const status = i.status || (i.enabled ? 'enabled' : 'disabled');
                     const statusClass = status === 'enabled' ? 'online' : (status === 'invalid' ? 'bad' : 'offline');
-                    
+
                     return `<div class="outbound-card ${statusClass}" id="cfip-card-${i.id}">
 <input type="checkbox" class="card-checkbox cfip-check" value="${i.id}">
 <div class="card-header">
@@ -2077,6 +2087,20 @@
                         latCell.className = 'card-latency unknown';
                     }
                 });
+            }
+        }
+
+        async function updateStatus(type, id, status) {
+            showLoading();
+            try {
+                // Determine enabled boolean for backward compatibility based on status
+                const enabled = status === 'enabled';
+                await api('/' + type + '/' + id, 'PUT', { status, enabled });
+                if (type === 'proxyip') await loadProxyIPs();
+                else if (type === 'outbound') await loadOutbounds();
+                else await loadCFIPs();
+            } finally {
+                hideLoading();
             }
         }
 
@@ -2560,7 +2584,7 @@
             } else if (type === 'argo') {
                 document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条 V<span>LESS</span> 或 V<span>Mess</span> 模板链接<br><b>V<span>LESS</span>示例：</b><br><code>v' + 'less://12345678@example.com:443?encryption=none&security=tls&sni=argo.example.com&fp=firefox&type=ws&host=argo.example.com&path=%2Fvless-argo%3Fed%3D2560#美国节点</code><br><b>V<span>Mess</span>示例：</b><br><code>v' + 'mess://eyAidiI6ICIyIiwgInBzIjogIkFsdGFyZV9TRy1WdWx0ciIsICJhZGQiOiAiY25hbWUuanZ2di5kZSIsICJwb3J0IjogIjQ0MyIsICJpZCI6ICI1ZWZkMDQyMC1lM2MzLTQ1ZjMtYTMyNS00NmRlOTY1MjFhMzYiLCAiYWlkIjogIjAiLCAic2N5IjogIm5vbmUiLCAibmV0IjogIndzIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogInNlcnZlcjEubGVub2FzLmRlIiwgInBhdGgiOiAiL3ZtZXNzLWFyZ28/ZWQ9MjU2MCIsICJ0bHMiOiAidGxzIiwgInNuaSI6ICJzZXJ2ZXIxLmxlbm9hcy5kZSIsICJhbHBuIjogIiIsICJmcCI6ICJjaHJvbWUifQo=</code>';
             } else {
-                document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，格式为：<br>• IP/域名:端口#备注<br>• IP/域名#备注（端口默认443）<br>备注可选，没有备注则自动生成';
+                document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，格式为：<br>• IP/域名#名字#备注<br>• IP/域名 (端口在导入后统一修改，默认443)<br>名字和备注可选，名字不自动生成，备注默认为空';
             }
             document.getElementById('batchModal').classList.remove('hidden');
         }
@@ -2692,7 +2716,7 @@
                 const results = await Promise.all([
                     ...data.proxyips.map(item => api('/proxyip', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
                     ...data.outbounds.map(item => api('/outbound', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
-                    ...data.cfips.map(item => api('/cfip', 'POST', { address: item.address, port: item.port, remark: item.remark, enabled: item.enabled })),
+                    ...data.cfips.map(item => api('/cfip', 'POST', { address: item.address, port: item.port, remark: item.remark, name: item.name, enabled: item.enabled, fail_count: item.fail_count, status: item.status })),
                     ...(data.argo || []).map(item => api('/argo', 'POST', { template_link: item.template_link, remark: item.remark, enabled: item.enabled }))
                 ]);
 
@@ -2806,21 +2830,24 @@
                         }
                         items.push({ template_link: line, remark: remark || undefined });
                     } else {
-                        // CFIP 格式：地址:端口#备注
-                        const parts = line.split('#');
-                        const addrPart = parts[0].trim();
-                        const remark = parts[1] ? parts[1].trim() : '';
-                        if (!addrPart) throw new Error('地址不能为空');
+                        // CFIP 格式：地址#名字#备注
+                        // 或 地址:端口#名字#备注 (但端口目前主要通过 input 控制，这里简化处理)
 
-                        let address, port = 443;
-                        if (addrPart.includes(':')) {
-                            const ap = addrPart.split(':');
+                        const parts = line.split('#');
+                        let address = parts[0].trim();
+                        let name = parts[1] ? parts[1].trim() : undefined;
+                        let remark = parts[2] ? parts[2].trim() : undefined;
+
+                        if (!address) throw new Error('地址不能为空');
+
+                        let port = 443;
+                        if (address.includes(':')) {
+                            const ap = address.split(':');
                             address = ap[0].trim();
                             port = parseInt(ap[1]) || 443;
-                        } else {
-                            address = addrPart;
                         }
-                        items.push({ address, port, remark: remark || undefined });
+
+                        items.push({ address, port, name, remark });
                     }
                 } catch (e) {
                     errors.push(`第${lineNum}行: ${e.message}`);
