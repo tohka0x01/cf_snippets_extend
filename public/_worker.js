@@ -48,7 +48,8 @@ async function initDB(db) {
     // 迁移数据: enabled -> status, remark -> name
     try {
         // 将 remark 迁移到 name (仅当 name 为空时)
-        await db.prepare(`UPDATE cf_ips SET name = remark, remark = NULL WHERE enabled != 99`).run().catch(() => { });
+        await db.prepare(`UPDATE cf_ips SET name = remark WHERE enabled != 99`).run().catch(() => { });
+        await db.prepare(`UPDATE cf_ips SET remark = NULL WHERE enabled != 99`).run().catch(() => { });
         // 将 enabled 迁移到 status (仅当 enabled != 99 时)
         await db.prepare(`UPDATE cf_ips SET status = CASE WHEN enabled = 1 THEN 'enabled' ELSE 'disabled' END, enabled = 99 WHERE enabled != 99`).run().catch(() => { });
     } catch (e) {
@@ -80,22 +81,6 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN enabled INTEGER DEFAULT 1`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN sort_order INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN created_at TEXT`).run().catch(() => { });
-
-        // 迁移 id=1 的 VL配置
-        const vlConfig = await db.prepare('SELECT * FROM subscribe_config WHERE id = 1').first();
-        if (vlConfig && !vlConfig.type) {
-            const token = generateToken();
-            await db.prepare('UPDATE subscribe_config SET type = ?, token = ?, remark = ?, enabled = 1, sort_order = 0, created_at = datetime("now") WHERE id = 1')
-                .bind('vl' + 'ess', token, 'VL订阅-1').run();
-        }
-
-        // 迁移 id=2 的 SS 配置
-        const ssConfig = await db.prepare('SELECT * FROM subscribe_config WHERE id = 2').first();
-        if (ssConfig && !ssConfig.type) {
-            const token = generateToken();
-            await db.prepare('UPDATE subscribe_config SET type = ?, token = ?, remark = ?, enabled = 1, sort_order = 0, created_at = datetime("now") WHERE id = 2')
-                .bind('ss', token, 'SS订阅-1').run();
-        }
 
         // 为所有没有 token 的配置生成 token
         const { results: noTokenConfigs } = await db.prepare('SELECT id FROM subscribe_config WHERE token IS NULL').all();
