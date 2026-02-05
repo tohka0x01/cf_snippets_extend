@@ -38,6 +38,9 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE cf_ips ADD COLUMN speed INTEGER`).run().catch(() => { });
         await db.prepare(`ALTER TABLE cf_ips ADD COLUMN country TEXT`).run().catch(() => { });
         await db.prepare(`ALTER TABLE cf_ips ADD COLUMN isp TEXT`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN name TEXT`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN fail_count INTEGER DEFAULT 0`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN status TEXT DEFAULT 'enabled'`).run().catch(() => { });
     } catch (e) {
         // 忽略错误
     }
@@ -145,7 +148,7 @@ export default {
                 return handleSSSubscribe(env.DB, parts[3], request.url);
             } else if (parts[2] === 'argo' && parts[3]) {
                 // ARGO 订阅: /sub/argo/token
-                return handleArgoSubscribe(env.DB, parts[3]);
+                return handleArgoSubscribe(env.DB, parts[3], request.url);
             } else if (parts[2] === 'clash') {
                 // Clash 订阅转换
                 return handleClashSubscribe(env.DB, request.url, env);
@@ -414,16 +417,16 @@ async function handleGetCFIPs(db) {
 }
 
 async function handleAddCFIP(request, db) {
-    const { address, port = 443, remark, enabled = true, sort_order = 0, latency, speed, country, isp } = await request.json();
+    const { address, port = 443, remark, name, enabled = true, sort_order = 0, latency, speed, country, isp, fail_count = 0, status = 'enabled' } = await request.json();
     if (!address) return json({ error: '地址不能为空' }, 400);
 
     const max = await db.prepare('SELECT MAX(id) as m FROM cf_ips').first();
     const finalRemark = remark || `CFIP-${(max?.m || 0) + 1}`;
 
-    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, enabled, sort_order, latency, speed, country, isp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
-        .bind(address, port, finalRemark, enabled ? 1 : 0, sort_order, latency || null, speed || null, country || null, isp || null).run();
+    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, name, enabled, sort_order, latency, speed, country, isp, fail_count, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+        .bind(address, port, finalRemark, name || null, enabled ? 1 : 0, sort_order, latency || null, speed || null, country || null, isp || null, fail_count, status).run();
 
-    return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark, latency, speed, country, isp } });
+    return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark, name, latency, speed, country, isp, fail_count, status } });
 }
 
 async function handleUpdateCFIP(request, db, id) {
@@ -432,12 +435,15 @@ async function handleUpdateCFIP(request, db, id) {
     if (body.address !== undefined) { sets.push('address = ?'); vals.push(body.address); }
     if (body.port !== undefined) { sets.push('port = ?'); vals.push(body.port); }
     if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
+    if (body.name !== undefined) { sets.push('name = ?'); vals.push(body.name); }
     if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled ? 1 : 0); }
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
     if (body.latency !== undefined) { sets.push('latency = ?'); vals.push(body.latency); }
     if (body.speed !== undefined) { sets.push('speed = ?'); vals.push(body.speed); }
     if (body.country !== undefined) { sets.push('country = ?'); vals.push(body.country); }
     if (body.isp !== undefined) { sets.push('isp = ?'); vals.push(body.isp); }
+    if (body.fail_count !== undefined) { sets.push('fail_count = ?'); vals.push(body.fail_count); }
+    if (body.status !== undefined) { sets.push('status = ?'); vals.push(body.status); }
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
     sets.push('updated_at = datetime("now")');
@@ -519,7 +525,7 @@ async function handleResetArgoToken(db, id) {
 }
 
 // ARGO 订阅生成
-async function handleArgoSubscribe(db, token) {
+async function handleArgoSubscribe(db, token, url) {
     // 1. 获取该token对应的模板
     const template = await db.prepare(
         'SELECT * FROM argo_subscribe WHERE token = ? AND enabled = 1'
@@ -529,10 +535,38 @@ async function handleArgoSubscribe(db, token) {
         return new Response('Subscription not found', { status: 404 });
     }
 
-    // 2. 获取所有启用的CFIP
-    const { results: cfips } = await db.prepare(
-        'SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id'
-    ).all();
+    // 解析URL参数中的 status
+    const urlParams = new URL(url).searchParams;
+    const statusParam = urlParams.get('status');
+    let statusList = ['enabled']; // 默认只获取 enabled
+
+    if (statusParam) {
+        statusList = statusParam.split(',').map(s => s === 'death_reprieve' ? 'invalid' : s);
+    }
+
+    // 构建查询条件
+    let query = 'SELECT * FROM cf_ips WHERE ';
+    let conditions = [];
+
+    if (statusList.includes('enabled')) {
+        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+    }
+    if (statusList.includes('disabled')) {
+        conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
+    }
+    if (statusList.includes('invalid')) {
+        conditions.push("status = 'invalid'");
+    }
+
+    // 如果没有有效条件，回退到默认
+    if (conditions.length === 0) {
+        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+    }
+
+    query += `(${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
+
+    // 2. 获取符合条件的CFIP
+    const { results: cfips } = await db.prepare(query).all();
 
     if (!cfips || cfips.length === 0) {
         return new Response('No enabled CFIP found', { status: 404 });
@@ -585,7 +619,7 @@ function generateArgoVlLinks(templateLink, cfips) {
             }
 
             // 构建新的V<span>LESS</span>链接（替换host:port）
-            const newRemark = `${originalRemark}-${cfip.remark || cfip.address}`;
+            const newRemark = `${originalRemark}-${cfip.name || cfip.remark || cfip.address}`;
             const vlLink = `v${'less'}://${uuid}@${host}:${port}${queryString || ''}#${encodeURIComponent(newRemark)}`;
 
             links.push(vlLink);
@@ -610,7 +644,7 @@ function generateArgoVlLinks(templateLink, cfips) {
                 newConfig.port = String(cfip.port || 443);
 
                 // 更新备注
-                newConfig.ps = `${originalRemark}-${cfip.remark || cfip.address}`;
+                newConfig.ps = `${originalRemark}-${cfip.name || cfip.remark || cfip.address}`;
 
                 // 重新编码为base64
                 const newJsonStr = JSON.stringify(newConfig);
@@ -735,14 +769,47 @@ async function handleGetSSConfig(db) {
 
 // V<span>LESS</span> 订阅生成
 async function handleGenerateVlSubscribe(request, db) {
-    const { uuid, snippetsDomain, proxyPath = '/?ed=2560' } = await request.json();
+    const { uuid, snippetsDomain, proxyPath = '/?ed=2560', status = 'enabled' } = await request.json();
     if (!uuid || !snippetsDomain) return json({ error: 'UUID 和域名不能为空' }, 400);
 
     const domain = snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
     await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, updated_at) VALUES (1, ?, ?, ?, datetime("now"))').bind(uuid, domain, proxyPath).run();
 
-    const { results: cfips } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
-    if (cfips.length === 0) return json({ error: '没有启用的 CFIP' }, 400);
+    // 支持多选状态，例如 status="enabled,death_reprieve" (旧参数) 或 "enabled,invalid"
+    let statusList = status.split(',');
+    // 兼容旧的 death_reprieve
+    statusList = statusList.map(s => s === 'death_reprieve' ? 'invalid' : s);
+
+    // 如果 status 包含 enabled，则也包含旧数据的 enabled=1
+    // 这里简化逻辑，查询时如果 targetStatus 包含 enabled，则查询 enabled=1
+    // 如果 targetStatus 包含 invalid，则查询 status='invalid'
+    // 实际上由于 status 字段是新加的，旧数据的 status 可能是 null (如果不设置 default) 或者 default
+    // 我们的 default 是 'enabled'，所以可以直接基于 check_cf_ips 更新后的 status 查询
+    // 但为了兼容，我们构建动态 SQL
+
+    let query = 'SELECT * FROM cf_ips WHERE ';
+    let conditions = [];
+    let params = [];
+
+    if (statusList.includes('enabled')) {
+        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+    }
+    if (statusList.includes('disabled')) {
+        conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
+    }
+    if (statusList.includes('invalid')) {
+        conditions.push("status = 'invalid'");
+    }
+
+    // 如果没有条件，默认查 enabled
+    if (conditions.length === 0) {
+        conditions.push("enabled = 1");
+    }
+
+    query += `(${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
+
+    const { results: cfips } = await db.prepare(query).all();
+    if (cfips.length === 0) return json({ error: '没有符合条件的 CFIP' }, 400);
 
     const { results: proxyips } = await db.prepare('SELECT * FROM proxy_ips WHERE enabled = 1 ORDER BY sort_order, id').all();
     const { results: outbounds } = await db.prepare('SELECT * FROM outbounds WHERE enabled = 1 ORDER BY sort_order, id').all();
@@ -753,7 +820,7 @@ async function handleGenerateVlSubscribe(request, db) {
         for (const cfip of cfips) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
-            const nodeName = cfip.remark || host;
+            const nodeName = cfip.name || cfip.remark || host;
             links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${domain}&fp=firefox&allowInsecure=1&type=ws&host=${domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
         }
     } else {
@@ -762,7 +829,7 @@ async function handleGenerateVlSubscribe(request, db) {
                 let host = cfip.address;
                 if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
                 const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
-                const cfipRemark = cfip.remark || host;
+                const cfipRemark = cfip.name || cfip.remark || host;
                 const nodeName = `${cfipRemark}-${proxyip.remark}`;
                 links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${domain}&fp=firefox&allowInsecure=1&type=ws&host=${domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
             }
@@ -793,7 +860,7 @@ async function handleGenerateSSSubscribe(request, db) {
         let host = cfip.address;
         if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
         const port = cfip.port || 443;
-        const nodeName = cfip.remark || host;
+        const nodeName = cfip.name || cfip.remark || host;
 
         // SS 格式
         const ssConfig = `${method}:${password}`;
@@ -860,8 +927,33 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
-        // 未指定CFIP ID，获取所有启用的CFIP
-        const { results } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
+        // 未指定CFIP ID，根据 status 筛选
+        const statusParam = urlParams.get('status');
+        let statusList = ['enabled']; // 默认只获取 enabled
+        if (statusParam) {
+            statusList = statusParam.split(',').map(s => s === 'death_reprieve' ? 'invalid' : s);
+        }
+
+        let query = 'SELECT * FROM cf_ips WHERE ';
+        let conditions = [];
+
+        if (statusList.includes('enabled')) {
+            conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+        }
+        if (statusList.includes('disabled')) {
+            conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
+        }
+        if (statusList.includes('invalid')) {
+            conditions.push("status = 'invalid'");
+        }
+
+        if (conditions.length === 0) {
+            conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+        }
+
+        query += `(${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
+
+        const { results } = await db.prepare(query).all();
         cfips = results;
     }
 
@@ -906,7 +998,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         for (const cfip of cfips) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
-            const nodeName = `${cfip.remark || host}-${configRemark}`;
+            const nodeName = `${cfip.name || cfip.remark || host}-${configRemark}`;
             links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
         }
     } else {
@@ -917,7 +1009,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
                 if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
 
                 const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
-                const cfipRemark = cfip.remark || host;
+                const cfipRemark = cfip.name || cfip.remark || host;
                 const nodeName = `${cfipRemark}-${proxyip.remark}-${configRemark}`;
 
                 links.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
@@ -999,7 +1091,7 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
             let host = cfip.address;
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
             const port = cfip.port || 443;
-            const nodeName = `${cfip.remark || host}-${configRemark}`;
+            const nodeName = `${cfip.name || cfip.remark || host}-${configRemark}`;
 
             const ssConfig = `${method}:${password}`;
             const encodedConfig = btoa(ssConfig);
@@ -1020,7 +1112,7 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
                 const pathWithQuery = path + '&ed=2560';
                 const encodedPath = pathWithQuery.replace(/=/g, '%3D');
 
-                const cfipRemark = cfip.remark || host;
+                const cfipRemark = cfip.name || cfip.remark || host;
                 const nodeName = `${cfipRemark}-${proxyip.remark}-${configRemark}`;
 
                 const ssConfig = `${method}:${password}`;

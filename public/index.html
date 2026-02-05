@@ -958,6 +958,12 @@
                         style="width:100%;padding:6px 10px;border:1px solid #e1e8ed;border-radius:6px;font-size:13px"
                         oninput="handleCFIPSearch(event)">
                 </div>
+                <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:#666;border-left:1px solid #e1e8ed;padding-left:12px">
+                    <span>状态:</span>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="enabled" checked onchange="handleCFIPStatusChange(event)"> 启用</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="disabled" checked onchange="handleCFIPStatusChange(event)"> 禁用</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="invalid" checked onchange="handleCFIPStatusChange(event)"> 失效</label>
+                </div>
                 <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666">
                     每页显示:
                     <select style="padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:13px"
@@ -981,9 +987,10 @@
                         <tr>
                             <th><input type="checkbox" id="cfipCheckAll" onchange="checkAll('cfip',this.checked)"></th>
                             <th>ID</th>
+                            <th>别名/备注</th>
                             <th>地址</th>
                             <th>端口</th>
-                            <th>备注</th>
+                            <th>失败次数</th>
                             <th>状态</th>
                             <th>操作</th>
                         </tr>
@@ -1172,6 +1179,7 @@
 
         // Global state for CFIP pagination and search
         let cfipSearchText = '';
+        let cfipStatusFilter = ['enabled', 'disabled', 'invalid'];
         let cfipPageSize = 20;
         let cfipCurrentPage = 1;
 
@@ -1666,9 +1674,18 @@
 
             // Filter
             let filteredData = cachedCFIPs;
+
+            // Status Filter
+            if (cfipStatusFilter.length < 3) { // If not all selected
+                filteredData = filteredData.filter(item => {
+                    const status = item.status || (item.enabled ? 'enabled' : 'disabled');
+                    return cfipStatusFilter.includes(status);
+                });
+            }
+
             if (cfipSearchText) {
-                filteredData = cachedCFIPs.filter(item => {
-                    const searchStr = (item.address + ' ' + item.port + ' ' + (item.remark || '')).toLowerCase();
+                filteredData = filteredData.filter(item => {
+                    const searchStr = (item.address + ' ' + item.port + ' ' + (item.remark || '') + ' ' + (item.name || '')).toLowerCase();
                     return searchStr.includes(cfipSearchText);
                 });
             }
@@ -1680,41 +1697,54 @@
 
             if (true) {
                 // 列表视图
-                document.getElementById('cfipTable').innerHTML = pageData.map(i => `<tr>
+                document.getElementById('cfipTable').innerHTML = pageData.map(i => {
+                    const status = i.status || (i.enabled ? 'enabled' : 'disabled');
+                    let statusBadge = '';
+                    if (status === 'enabled') statusBadge = '<span class="badge badge-success">启用</span>';
+                    else if (status === 'disabled') statusBadge = '<span class="badge badge-secondary">禁用</span>';
+                    else if (status === 'invalid') statusBadge = '<span class="badge badge-danger">失效</span>';
+                    
+                    const nameDisplay = i.name ? `<div><span style="font-weight:bold">${i.name}</span></div><div style="font-size:11px;color:#999">${i.remark||'-'}</div>` : (i.remark || '-');
+
+                    return `<tr>
 <td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
 <td>${i.id}</td>
+<td>${nameDisplay}</td>
 <td>${i.address}</td>
 <td>${i.port}</td>
-<td>${i.remark || '-'}</td>
-<td><label class="switch"><input type="checkbox" ${i.enabled ? 'checked' : ''} onchange="toggle('cfip',${i.id},this.checked)"><span class="slider"></span></label></td>
+<td>${i.fail_count || 0}</td>
+<td>${statusBadge}</td>
 <td class="actions">
-<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}','${(i.remark || '').replace(/'/g, "\\\\'")}',${i.port})">✏️ 编辑</button>
-</td></tr>`).join('');
+<button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}', '${(i.remark || '').replace(/'/g, "\\\\'")}', ${i.port}, '${(i.name || '').replace(/'/g, "\\\\'")}')">✏️ 编辑</button>
+</td></tr>`;
+                }).join('');
                 document.getElementById('cfipCheckAll').checked = false;
 
                 // 卡片视图
                 document.getElementById('cfipCardView').innerHTML = pageData.map(i => {
-                    const statusClass = i.enabled ? 'online' : 'offline';
-                    const statusText = i.enabled ? '已启用' : '已禁用';
+                    const status = i.status || (i.enabled ? 'enabled' : 'disabled');
+                    const statusClass = status === 'enabled' ? 'online' : (status === 'invalid' ? 'bad' : 'offline');
+                    
                     return `<div class="outbound-card ${statusClass}" id="cfip-card-${i.id}">
 <input type="checkbox" class="card-checkbox cfip-check" value="${i.id}">
 <div class="card-header">
 <div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
-<div class="card-title">${i.remark || 'CFIP-' + i.id}</div>
+<div class="card-title">${i.name || i.remark || 'CFIP-' + i.id}</div>
+<div style="font-size:11px;color:#999;margin-top:2px">${i.remark && i.name ? i.remark : ''}</div>
 </div>
 </div>
 <div class="card-info">
 <div class="card-info-row">
 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${i.address}:${i.port}</span>
 </div>
+<div class="card-info-row" style="margin-top:4px;font-size:11px;color:#666">
+<span>失败: ${i.fail_count || 0}</span>
+<span style="margin-left:8px">状态: ${status}</span>
+</div>
 </div>
 <div class="card-actions">
 <div style="flex:1"></div>
-<span onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}','${(i.remark || '').replace(/'/g, "\\\\'")}',${i.port})" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
-<label class="switch" style="margin:0;margin-left:12px">
-<input type="checkbox" ${i.enabled ? 'checked' : ''} onchange="toggle('cfip',${i.id},this.checked)">
-<span class="slider"></span>
-</label>
+<span onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}','${(i.remark || '').replace(/'/g, "\\\\'")}',${i.port},'${(i.name || '').replace(/'/g, "\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
 </div>
 </div>`;
                 }).join('');
@@ -1737,6 +1767,17 @@
 
         function handleCFIPSearch(e) {
             cfipSearchText = e.target.value.trim().toLowerCase();
+            cfipCurrentPage = 1;
+            renderCFIPs();
+        }
+
+        function handleCFIPStatusChange(e) {
+            const val = e.target.value;
+            if (e.target.checked) {
+                if (!cfipStatusFilter.includes(val)) cfipStatusFilter.push(val);
+            } else {
+                cfipStatusFilter = cfipStatusFilter.filter(s => s !== val);
+            }
             cfipCurrentPage = 1;
             renderCFIPs();
         }
@@ -2064,7 +2105,7 @@
             }
         }
 
-        function showModal(type, id = null, addr = '', remark = '', port = 443) {
+        function showModal(type, id = null, addr = '', remark = '', port = 443, name = '') {
             modalType = type;
             editId = id;
             const isEdit = id !== null;
@@ -2077,15 +2118,16 @@
                 document.getElementById('modalBody').innerHTML = `<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="socks5://host:port 或 http://host:port"></div>
 <div class="form-group"><label>备注</label><input type="text" id="mRemark" value="${remark}"></div>`;
             } else {
-                document.getElementById('modalBody').innerHTML = `<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="优选域名或IP"></div>
+                document.getElementById('modalBody').innerHTML = `<div class="form-group"><label>别名 (Name)</label><input type="text" id="mName" value="${name}" placeholder="可选，用于订阅节点名称"></div>
+<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="优选域名或IP"></div>
 <div class="form-group"><label>端口</label><input type="number" id="mPort" value="${port}"></div>
 <div class="form-group"><label>备注</label><input type="text" id="mRemark" value="${remark}"></div>`;
             }
             document.getElementById('addModal').classList.remove('hidden');
         }
 
-        function editItem(type, id, addr, remark, port) {
-            showModal(type, id, addr, remark, port || 443);
+        function editItem(type, id, addr, remark, port, name) {
+            showModal(type, id, addr, remark, port || 443, name || '');
         }
 
         function closeModal() { document.getElementById('addModal').classList.add('hidden'); editId = null }
@@ -2139,7 +2181,10 @@
             if (!addr) return alert('请输入地址');
 
             let body = { address: addr, remark: remark || undefined };
-            if (modalType === 'cfip') body.port = parseInt(document.getElementById('mPort').value) || 443;
+            if (modalType === 'cfip') {
+                body.port = parseInt(document.getElementById('mPort').value) || 443;
+                body.name = document.getElementById('mName').value.trim() || undefined;
+            }
 
             const method = editId ? 'PUT' : 'POST';
             const path = editId ? '/' + modalType + '/' + editId : '/' + modalType;
