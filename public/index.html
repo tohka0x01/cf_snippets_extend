@@ -965,11 +965,16 @@
                     style="display:flex;align-items:center;gap:12px;font-size:13px;color:#666;border-left:1px solid #e1e8ed;padding-left:12px">
                     <span>状态:</span>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
-                            value="enabled" checked onchange="handleCFIPStatusChange(event)"> 启用</label>
+                            value="all" checked onchange="handleCFIPStatusChange(event)"> 全选</label>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
-                            value="disabled" checked onchange="handleCFIPStatusChange(event)"> 禁用</label>
+                            class="cfip-status-check" value="enabled" checked onchange="handleCFIPStatusChange(event)">
+                        启用</label>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
-                            value="invalid" checked onchange="handleCFIPStatusChange(event)"> 失效</label>
+                            class="cfip-status-check" value="disabled" checked onchange="handleCFIPStatusChange(event)">
+                        禁用</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            class="cfip-status-check" value="invalid" checked onchange="handleCFIPStatusChange(event)">
+                        失效</label>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666">
                     每页显示:
@@ -1743,7 +1748,7 @@
 <div class="card-header">
 <div style="flex:1;padding-right:30px;min-width:0;overflow:hidden">
 <div class="card-title">${i.name || i.remark || 'CFIP-' + i.id}</div>
-<div style="font-size:11px;color:#999;margin-top:2px">${i.remark && i.name ? i.remark : ''}</div>
+<div style="font-size:11px;color:#999;margin-top:2px">${i.remark || ''}</div>
 </div>
 </div>
 <div class="card-info">
@@ -1786,10 +1791,30 @@
 
         function handleCFIPStatusChange(e) {
             const val = e.target.value;
-            if (e.target.checked) {
-                if (!cfipStatusFilter.includes(val)) cfipStatusFilter.push(val);
+            const isChecked = e.target.checked;
+
+            if (val === 'all') {
+                // Select/Deselect All
+                const checks = document.querySelectorAll('.cfip-status-check');
+                checks.forEach(c => c.checked = isChecked);
+                if (isChecked) {
+                    cfipStatusFilter = ['enabled', 'disabled', 'invalid'];
+                } else {
+                    cfipStatusFilter = [];
+                }
             } else {
-                cfipStatusFilter = cfipStatusFilter.filter(s => s !== val);
+                // Individual check
+                if (isChecked) {
+                    if (!cfipStatusFilter.includes(val)) cfipStatusFilter.push(val);
+                } else {
+                    cfipStatusFilter = cfipStatusFilter.filter(s => s !== val);
+                }
+
+                // Sync "Select All" checkbox
+                const allCheck = document.querySelector('input[value="all"]');
+                const checks = document.querySelectorAll('.cfip-status-check');
+                const allChecked = Array.from(checks).every(c => c.checked);
+                if (allCheck) allCheck.checked = allChecked;
             }
             cfipCurrentPage = 1;
             renderCFIPs();
