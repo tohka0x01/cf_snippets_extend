@@ -998,12 +998,18 @@
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="cfipCheckAll" onchange="checkAll('cfip',this.checked)"></th>
-                            <th>ID</th>
-                            <th>别名 (Name)</th>
-                            <th>备注 (Remark)</th>
-                            <th>地址</th>
-                            <th>端口</th>
-                            <th>失败次数</th>
+                            <th class="sort-header" onclick="handleCFIPSort('id')">ID <span id="sort-icon-id"></span>
+                            </th>
+                            <th class="sort-header" onclick="handleCFIPSort('name')">别名 (Name) <span
+                                    id="sort-icon-name"></span></th>
+                            <th class="sort-header" onclick="handleCFIPSort('remark')">备注 (Remark) <span
+                                    id="sort-icon-remark"></span></th>
+                            <th class="sort-header" onclick="handleCFIPSort('address')">地址 <span
+                                    id="sort-icon-address"></span></th>
+                            <th class="sort-header" onclick="handleCFIPSort('port')">端口 <span
+                                    id="sort-icon-port"></span></th>
+                            <th class="sort-header" onclick="handleCFIPSort('fail_count')">失败次数 <span
+                                    id="sort-icon-fail_count"></span></th>
                             <th>状态</th>
                             <th>操作</th>
                         </tr>
@@ -1686,7 +1692,27 @@
             if (!cachedCFIPs) return;
 
             // Filter
-            let filteredData = cachedCFIPs;
+            let filteredData = [...cachedCFIPs];
+
+            // Sort
+            if (cfipSortColumn) {
+                filteredData.sort((a, b) => {
+                    let valA = a[cfipSortColumn];
+                    let valB = b[cfipSortColumn];
+
+                    if (cfipSortColumn === 'id' || cfipSortColumn === 'port' || cfipSortColumn === 'fail_count') {
+                        valA = parseInt(valA) || 0;
+                        valB = parseInt(valB) || 0;
+                    } else {
+                        valA = (valA || '').toString().toLowerCase();
+                        valB = (valB || '').toString().toLowerCase();
+                    }
+
+                    if (valA < valB) return cfipSortDirection === 'asc' ? -1 : 1;
+                    if (valA > valB) return cfipSortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
 
             // Status Filter
             if (cfipStatusFilter.length < 3) { // If not all selected
@@ -1782,6 +1808,34 @@
         }
 
 
+
+        let cfipSortColumn = 'id';
+        let cfipSortDirection = 'asc';
+
+        function handleCFIPSort(column) {
+            if (cfipSortColumn === column) {
+                cfipSortDirection = cfipSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                cfipSortColumn = column;
+                cfipSortDirection = 'asc';
+            }
+            renderCFIPs();
+            updateSortIcons();
+        }
+
+        function updateSortIcons() {
+            const columns = ['id', 'name', 'remark', 'address', 'port', 'fail_count'];
+            columns.forEach(col => {
+                const icon = document.getElementById('sort-icon-' + col);
+                if (icon) {
+                    if (cfipSortColumn === col) {
+                        icon.textContent = cfipSortDirection === 'asc' ? '↑' : '↓';
+                    } else {
+                        icon.textContent = '';
+                    }
+                }
+            });
+        }
 
         function handleCFIPSearch(e) {
             cfipSearchText = e.target.value.trim().toLowerCase();
