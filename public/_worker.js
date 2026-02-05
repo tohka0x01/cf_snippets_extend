@@ -47,10 +47,10 @@ async function initDB(db) {
 
     // 迁移数据: enabled -> status, remark -> name
     try {
-        // 将 enabled 迁移到 status (仅当 status 为空或默认值时)
-        await db.prepare(`UPDATE cf_ips SET status = CASE WHEN enabled = 1 THEN 'enabled' ELSE 'disabled' END WHERE status IS NULL OR status = 'enabled'`).run().catch(() => { });
         // 将 remark 迁移到 name (仅当 name 为空时)
-        await db.prepare(`UPDATE cf_ips SET name = remark, remark = NULL WHERE name IS NULL AND remark IS NOT NULL`).run().catch(() => { });
+        await db.prepare(`UPDATE cf_ips SET name = remark, remark = NULL WHERE enabled != 99`).run().catch(() => { });
+        // 将 enabled 迁移到 status (仅当 enabled != 99 时)
+        await db.prepare(`UPDATE cf_ips SET status = CASE WHEN enabled = 1 THEN 'enabled' ELSE 'disabled' END, enabled = 99 WHERE enabled != 99`).run().catch(() => { });
     } catch (e) {
         // 忽略错误
     }
