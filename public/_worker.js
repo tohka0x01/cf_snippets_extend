@@ -47,9 +47,6 @@ async function initDB(db) {
 
     // 迁移数据: enabled -> status, remark -> name
     try {
-        // 将 remark 迁移到 name (仅当 name 为空时)
-        await db.prepare(`UPDATE cf_ips SET name = remark WHERE enabled != 99`).run().catch(() => { });
-        await db.prepare(`UPDATE cf_ips SET remark = NULL WHERE enabled != 99`).run().catch(() => { });
         // 将 enabled 迁移到 status (仅当 enabled != 99 时)
         await db.prepare(`UPDATE cf_ips SET status = CASE WHEN enabled = 1 THEN 'enabled' ELSE 'disabled' END, enabled = 99 WHERE enabled != 99`).run().catch(() => { });
     } catch (e) {
