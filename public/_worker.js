@@ -13,7 +13,7 @@ async function initDB(db) {
         CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY, api_key TEXT UNIQUE, expires_at TEXT, created_at TEXT);
         CREATE TABLE IF NOT EXISTS proxy_ips (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS outbounds (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, exit_country TEXT, exit_city TEXT, exit_ip TEXT, exit_org TEXT, checked_at TEXT, created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS cf_ips (id INTEGER PRIMARY KEY, address TEXT, port INTEGER DEFAULT 443, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS cf_ips (id INTEGER PRIMARY KEY, address TEXT, port INTEGER DEFAULT 443, remark TEXT, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS subscribe_config (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, token TEXT UNIQUE NOT NULL, uuid TEXT, snippets_domain TEXT, proxy_path TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS argo_subscribe (id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, template_link TEXT NOT NULL, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
     `).catch(() => { });
@@ -120,7 +120,7 @@ function parseCfipStatusConditions(cfipStatusParam) {
     const conditions = [];
     if (!cfipStatusParam) {
         // Default: enabled only
-        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+        conditions.push("status = 'enabled' OR status IS NULL");
         return conditions;
     }
 
@@ -130,11 +130,11 @@ function parseCfipStatusConditions(cfipStatusParam) {
         switch (status) {
             case 'enabled':
             case '1':
-                conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+                conditions.push("status = 'enabled' OR status IS NULL");
                 break;
             case 'disabled':
             case '0':
-                conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
+                conditions.push("status = 'disabled'");
                 break;
             case 'invalid':
             case 'death_reprieve':
@@ -146,7 +146,7 @@ function parseCfipStatusConditions(cfipStatusParam) {
 
     // If no valid statuses, default to enabled
     if (conditions.length === 0) {
-        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+        conditions.push("status = 'enabled' OR status IS NULL");
     }
 
     return conditions;
@@ -443,14 +443,14 @@ async function handleGetCFIPs(db) {
 }
 
 async function handleAddCFIP(request, db) {
-    const { address, port = 443, remark, name, enabled = true, sort_order = 0, latency, speed, country, isp, fail_count = 0, status = 'enabled' } = await request.json();
+    const { address, port = 443, remark, name, sort_order = 0, latency, speed, country, isp, fail_count = 0, status = 'enabled' } = await request.json();
     if (!address) return json({ error: '地址不能为空' }, 400);
 
     const max = await db.prepare('SELECT MAX(id) as m FROM cf_ips').first();
     const finalRemark = remark || `CFIP-${(max?.m || 0) + 1}`;
 
-    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, name, enabled, sort_order, latency, speed, country, isp, fail_count, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
-        .bind(address, port, finalRemark, name || null, enabled ? 1 : 0, sort_order, latency || null, speed || null, country || null, isp || null, fail_count, status).run();
+    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+        .bind(address, port, finalRemark, name || null, sort_order, latency || null, speed || null, country || null, isp || null, fail_count, status).run();
 
     return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark, name, latency, speed, country, isp, fail_count, status } });
 }
@@ -462,7 +462,7 @@ async function handleUpdateCFIP(request, db, id) {
     if (body.port !== undefined) { sets.push('port = ?'); vals.push(body.port); }
     if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
     if (body.name !== undefined) { sets.push('name = ?'); vals.push(body.name); }
-    if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled ? 1 : 0); }
+    // enabled field has been removed, only use status field
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
     if (body.latency !== undefined) { sets.push('latency = ?'); vals.push(body.latency); }
     if (body.speed !== undefined) { sets.push('speed = ?'); vals.push(body.speed); }
@@ -796,10 +796,10 @@ async function handleGenerateVlSubscribe(request, db) {
     let params = [];
 
     if (statusList.includes('enabled')) {
-        conditions.push("status = 'enabled' OR (status IS NULL AND enabled = 1)");
+        conditions.push("status = 'enabled' OR status IS NULL");
     }
     if (statusList.includes('disabled')) {
-        conditions.push("status = 'disabled' OR (status IS NULL AND enabled = 0)");
+        conditions.push("status = 'disabled'");
     }
     if (statusList.includes('invalid')) {
         conditions.push("status = 'invalid'");
@@ -807,7 +807,7 @@ async function handleGenerateVlSubscribe(request, db) {
 
     // 如果没有条件，默认查 enabled
     if (conditions.length === 0) {
-        conditions.push("enabled = 1");
+        conditions.push("status = 'enabled' OR status IS NULL");
     }
 
     query += `(${conditions.join(' OR ')}) ORDER BY speed DESC, sort_order, id`;
@@ -854,7 +854,7 @@ async function handleGenerateSSSubscribe(request, db) {
     // 保存配置，使用 uuid 字段存储 password
     await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, updated_at) VALUES (2, ?, ?, ?, datetime("now"))').bind(password, domain, finalPath).run();
 
-    const { results: cfips } = await db.prepare('SELECT * FROM cf_ips WHERE enabled = 1 ORDER BY speed DESC, sort_order, id').all();
+    const { results: cfips } = await db.prepare("SELECT * FROM cf_ips WHERE status = 'enabled' OR status IS NULL ORDER BY speed DESC, sort_order, id").all();
     if (cfips.length === 0) return json({ error: '没有启用的 CFIP' }, 400);
 
     const method = 'none';

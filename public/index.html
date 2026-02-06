@@ -1717,7 +1717,7 @@
             // Status Filter
             if (cfipStatusFilter.length < 3) { // If not all selected
                 filteredData = filteredData.filter(item => {
-                    const status = item.status || (item.enabled ? 'enabled' : 'disabled');
+                    const status = item.status || 'enabled';
                     return cfipStatusFilter.includes(status);
                 });
             }
@@ -1737,7 +1737,7 @@
             if (true) {
                 // 列表视图
                 document.getElementById('cfipTable').innerHTML = pageData.map(i => {
-                    const status = i.status || (i.enabled ? 'enabled' : 'disabled');
+                    const status = i.status || 'enabled';
                     let statusColor = '#999';
                     if (status === 'enabled') statusColor = '#48c774';
                     else if (status === 'disabled') statusColor = '#b5b5b5';
@@ -1766,7 +1766,7 @@
 
                 // 卡片视图
                 document.getElementById('cfipCardView').innerHTML = pageData.map(i => {
-                    const status = i.status || (i.enabled ? 'enabled' : 'disabled');
+                    const status = i.status || 'enabled';
                     const statusClass = status === 'enabled' ? 'online' : (status === 'invalid' ? 'bad' : 'offline');
 
                     return `<div class="outbound-card ${statusClass}" id="cfip-card-${i.id}">
@@ -2175,9 +2175,14 @@
         async function updateStatus(type, id, status) {
             showLoading();
             try {
-                // Determine enabled boolean for backward compatibility based on status
-                const enabled = status === 'enabled';
-                await api('/' + type + '/' + id, 'PUT', { status, enabled });
+                if (type === 'cfip') {
+                    // For cfip, only update status, no enabled field
+                    await api('/' + type + '/' + id, 'PUT', { status });
+                } else {
+                    // For other types, keep backward compatibility
+                    const enabled = status === 'enabled';
+                    await api('/' + type + '/' + id, 'PUT', { status, enabled });
+                }
                 if (type === 'proxyip') await loadProxyIPs();
                 else if (type === 'outbound') await loadOutbounds();
                 else await loadCFIPs();
@@ -2798,7 +2803,7 @@
                 const results = await Promise.all([
                     ...data.proxyips.map(item => api('/proxyip', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
                     ...data.outbounds.map(item => api('/outbound', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
-                    ...data.cfips.map(item => api('/cfip', 'POST', { address: item.address, port: item.port, remark: item.remark, name: item.name, enabled: item.enabled, fail_count: item.fail_count, status: item.status })),
+                    ...data.cfips.map(item => api('/cfip', 'POST', { address: item.address, port: item.port, remark: item.remark, name: item.name, fail_count: item.fail_count, status: item.status || 'enabled' })),
                     ...(data.argo || []).map(item => api('/argo', 'POST', { template_link: item.template_link, remark: item.remark, enabled: item.enabled }))
                 ]);
 
@@ -3060,10 +3065,10 @@
 
             showLoading();
             let success = 0, failed = 0;
-            const enabled = status === 'enabled';
             for (const cb of checks) {
                 try {
-                    const d = await api('/' + type + '/' + cb.value, 'PUT', { status, enabled });
+                    const data = type === 'cfip' ? { status } : { status, enabled: status === 'enabled' };
+                    const d = await api('/' + type + '/' + cb.value, 'PUT', data);
                     if (d.success) success++; else failed++;
                 } catch (e) {
                     failed++;
