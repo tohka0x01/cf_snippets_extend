@@ -1257,12 +1257,23 @@
         let cfipPageSize = 20;
         let cfipCurrentPage = 1;
         // Column visibility settings (default: hide optional columns)
-        let cfipColumnSettings = {
-            remark: false,
-            fail_count: false,
-            latency: false,
-            speed: false
-        };
+        // Load from localStorage if available
+        let cfipColumnSettings = (function () {
+            const saved = localStorage.getItem('cfipColumnSettings');
+            if (saved) {
+                try {
+                    return JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to parse cfipColumnSettings from localStorage', e);
+                }
+            }
+            return {
+                remark: false,
+                fail_count: false,
+                latency: false,
+                speed: false
+            };
+        })();
 
         // 全局缓存数据用于查重
         let cachedProxyIPs = [];
@@ -1814,7 +1825,7 @@
 <td>${i.port}</td>
 <td class="cfip-col-fail_count">${i.fail_count || 0}</td>
 <td class="cfip-col-latency">${i.latency ? i.latency + 'ms' : '-'}</td>
-<td class="cfip-col-speed">${i.speed ? i.speed.toFixed(2) : '-'}</td>
+<td class="cfip-col-speed">${i.speed ? (i.speed / 1024).toFixed(2) : '-'}</td>
 <td>
     <select onchange="updateStatus('cfip', ${i.id}, this.value)" style="padding:2px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:${statusColor};border-color:${statusColor}">
         <option value="enabled" ${status === 'enabled' ? 'selected' : ''}>启用</option>
@@ -1995,6 +2006,8 @@
         // Toggle column visibility
         function toggleCFIPColumn(column) {
             cfipColumnSettings[column] = !cfipColumnSettings[column];
+            // Save to localStorage
+            localStorage.setItem('cfipColumnSettings', JSON.stringify(cfipColumnSettings));
             applyCFIPColumnVisibility();
         }
 
