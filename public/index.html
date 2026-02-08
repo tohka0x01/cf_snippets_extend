@@ -227,6 +227,16 @@
             font-weight: 600
         }
 
+        .table th.sort-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background .2s
+        }
+
+        .table th.sort-header:hover {
+            background: #eef1f5
+        }
+
         .badge {
             padding: 3px 8px;
             border-radius: 4px;
@@ -942,7 +952,7 @@
         <div id="cfipPanel" class="panel hidden">
             <div class="panel-header" style="margin-bottom:12px">
                 <h2>CFIP(优选域名) 管理</h2>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center">
                     <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('cfip')">➕ 添加</button>
                     <select id="cfipBatchStatus"
                         style="padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:12px">
@@ -952,7 +962,44 @@
                     </select>
                     <button class="btn btn-info btn-sm" data-icon="✓" onclick="batchSetStatus('cfip')">设置状态</button>
                     <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
+                    <div style="position:relative">
+                        <button class="btn btn-sm" style="background:#f0f0f0;border:1px solid #ddd"
+                            onclick="toggleCFIPSettings(event)">⚙️ 设置</button>
+                        <div id="cfipSettingsDropdown" class="hidden"
+                            style="position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1px solid #e1e8ed;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:12px;z-index:100;min-width:180px">
+                            <div
+                                style="font-size:13px;font-weight:600;color:#333;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:8px">
+                                显示列设置</div>
+                            <label
+                                style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555;margin-bottom:8px">
+                                <input type="checkbox" id="cfipShowRemark" onchange="toggleCFIPColumn('remark')"> 备注
+                                (Remark)
+                            </label>
+                            <label
+                                style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555;margin-bottom:8px">
+                                <input type="checkbox" id="cfipShowFailCount" onchange="toggleCFIPColumn('fail_count')">
+                                失败次数
+                            </label>
+                            <label
+                                style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555;margin-bottom:8px">
+                                <input type="checkbox" id="cfipShowLatency" onchange="toggleCFIPColumn('latency')"> 延迟
+                                (ms)
+                            </label>
+                            <label
+                                style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#555">
+                                <input type="checkbox" id="cfipShowSpeed" onchange="toggleCFIPColumn('speed')"> 下载速度
+                                (MB/s)
+                            </label>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            <!-- Pagination at top -->
+            <div
+                style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:10px;background:#f7f9fc;border-radius:8px">
+                <button id="cfipPrevBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">◀ 上一页</button>
+                <span id="cfipPageInfoTop" style="font-size:13px;color:#666">Page 1 of 1 (Total 0)</span>
+                <button id="cfipNextBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页 ▶</button>
             </div>
             <div
                 style="display:flex;gap:12px;margin-bottom:12px;align-items:center;background:#f7f9fc;padding:8px;border-radius:8px">
@@ -985,6 +1032,9 @@
                         <option value="100">100</option>
                         <option value="200">200</option>
                         <option value="500">500</option>
+                        <option value="1000">1000</option>
+                        <option value="2000">2000</option>
+                        <option value="5000">5000</option>
                     </select>
                 </div>
             </div>
@@ -1002,14 +1052,19 @@
                             </th>
                             <th class="sort-header" onclick="handleCFIPSort('name')">别名 (Name) <span
                                     id="sort-icon-name"></span></th>
-                            <th class="sort-header" onclick="handleCFIPSort('remark')">备注 (Remark) <span
-                                    id="sort-icon-remark"></span></th>
+                            <th class="sort-header cfip-col-remark hidden" onclick="handleCFIPSort('remark')">备注
+                                (Remark) <span id="sort-icon-remark"></span></th>
                             <th class="sort-header" onclick="handleCFIPSort('address')">地址 <span
                                     id="sort-icon-address"></span></th>
                             <th class="sort-header" onclick="handleCFIPSort('port')">端口 <span
                                     id="sort-icon-port"></span></th>
-                            <th class="sort-header" onclick="handleCFIPSort('fail_count')">失败次数 <span
-                                    id="sort-icon-fail_count"></span></th>
+                            <th class="sort-header cfip-col-fail_count hidden" onclick="handleCFIPSort('fail_count')">
+                                失败次数 <span id="sort-icon-fail_count"></span></th>
+                            <th class="sort-header cfip-col-latency hidden" onclick="handleCFIPSort('latency')">延迟 <span
+                                    id="sort-icon-latency"></span></th>
+                            <th class="sort-header cfip-col-speed hidden" onclick="handleCFIPSort('speed')">速度 (MB/s)
+                                <span id="sort-icon-speed"></span>
+                            </th>
                             <th>状态</th>
                             <th>操作</th>
                         </tr>
@@ -1201,6 +1256,13 @@
         let cfipStatusFilter = ['enabled', 'disabled', 'invalid'];
         let cfipPageSize = 20;
         let cfipCurrentPage = 1;
+        // Column visibility settings (default: hide optional columns)
+        let cfipColumnSettings = {
+            remark: false,
+            fail_count: false,
+            latency: false,
+            speed: false
+        };
 
         // 全局缓存数据用于查重
         let cachedProxyIPs = [];
@@ -1747,10 +1809,12 @@
 <td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
 <td>${i.id}</td>
 <td style="font-weight:bold">${i.name || '-'}</td>
-<td>${i.remark || '-'}</td>
+<td class="cfip-col-remark">${i.remark || '-'}</td>
 <td>${i.address}</td>
 <td>${i.port}</td>
-<td>${i.fail_count || 0}</td>
+<td class="cfip-col-fail_count">${i.fail_count || 0}</td>
+<td class="cfip-col-latency">${i.latency ? i.latency + 'ms' : '-'}</td>
+<td class="cfip-col-speed">${i.speed ? i.speed.toFixed(2) : '-'}</td>
 <td>
     <select onchange="updateStatus('cfip', ${i.id}, this.value)" style="padding:2px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:${statusColor};border-color:${statusColor}">
         <option value="enabled" ${status === 'enabled' ? 'selected' : ''}>启用</option>
@@ -1804,6 +1868,9 @@
                     document.getElementById('cfipListView').classList.remove('hidden');
                     document.getElementById('cfipCardView').classList.add('hidden');
                 }
+
+                // Apply column visibility settings
+                applyCFIPColumnVisibility();
             }
         }
 
@@ -1824,7 +1891,7 @@
         }
 
         function updateSortIcons() {
-            const columns = ['id', 'name', 'remark', 'address', 'port', 'fail_count'];
+            const columns = ['id', 'name', 'remark', 'address', 'port', 'fail_count', 'latency', 'speed'];
             columns.forEach(col => {
                 const icon = document.getElementById('sort-icon-' + col);
                 if (icon) {
@@ -1892,10 +1959,70 @@
             if (cfipCurrentPage < 1) cfipCurrentPage = 1;
             if (cfipCurrentPage > totalPages) cfipCurrentPage = totalPages;
 
-            document.getElementById('cfipPageInfo').textContent = `Page ${cfipCurrentPage} of ${totalPages} (Total ${totalItems})`;
-            document.getElementById('cfipPrevBtn').disabled = cfipCurrentPage <= 1;
-            document.getElementById('cfipNextBtn').disabled = cfipCurrentPage >= totalPages;
+            const pageText = `Page ${cfipCurrentPage} of ${totalPages} (Total ${totalItems})`;
+            const isFirstPage = cfipCurrentPage <= 1;
+            const isLastPage = cfipCurrentPage >= totalPages;
+
+            // Update bottom pagination
+            document.getElementById('cfipPageInfo').textContent = pageText;
+            document.getElementById('cfipPrevBtn').disabled = isFirstPage;
+            document.getElementById('cfipNextBtn').disabled = isLastPage;
+
+            // Update top pagination
+            document.getElementById('cfipPageInfoTop').textContent = pageText;
+            document.getElementById('cfipPrevBtnTop').disabled = isFirstPage;
+            document.getElementById('cfipNextBtnTop').disabled = isLastPage;
         }
+
+        // Toggle settings dropdown
+        function toggleCFIPSettings(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('cfipSettingsDropdown');
+            dropdown.classList.toggle('hidden');
+
+            // Close dropdown when clicking outside
+            if (!dropdown.classList.contains('hidden')) {
+                const closeDropdown = (e) => {
+                    if (!dropdown.contains(e.target) && e.target !== event.currentTarget) {
+                        dropdown.classList.add('hidden');
+                        document.removeEventListener('click', closeDropdown);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', closeDropdown), 0);
+            }
+        }
+
+        // Toggle column visibility
+        function toggleCFIPColumn(column) {
+            cfipColumnSettings[column] = !cfipColumnSettings[column];
+            applyCFIPColumnVisibility();
+        }
+
+        // Apply column visibility based on settings
+        function applyCFIPColumnVisibility() {
+            const columns = ['remark', 'fail_count', 'latency', 'speed'];
+            columns.forEach(col => {
+                const isVisible = cfipColumnSettings[col];
+                // Update header visibility
+                document.querySelectorAll(`.cfip-col-${col}`).forEach(el => {
+                    if (isVisible) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                });
+                // Update checkbox state
+                const checkboxMap = {
+                    'remark': 'cfipShowRemark',
+                    'fail_count': 'cfipShowFailCount',
+                    'latency': 'cfipShowLatency',
+                    'speed': 'cfipShowSpeed'
+                };
+                const checkbox = document.getElementById(checkboxMap[col]);
+                if (checkbox) checkbox.checked = isVisible;
+            });
+        }
+
 
         // 查重函数
         function checkDuplicate(type, data) {
