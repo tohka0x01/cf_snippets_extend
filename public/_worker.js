@@ -224,6 +224,15 @@ export default {
             if (method === 'GET') return handleGetProxyIPs(env.DB);
             if (method === 'POST') return handleAddProxyIP(request, env.DB);
         }
+        if (path === '/api/proxyip/batch' && method === 'POST') {
+            return handleBatchAddProxyIP(request, env.DB);
+        }
+        if (path === '/api/proxyip/batch/delete' && method === 'POST') {
+            return handleBatchDeleteProxyIP(request, env.DB);
+        }
+        if (path === '/api/proxyip/batch/enable' && method === 'POST') {
+            return handleBatchEnableProxyIP(request, env.DB);
+        }
         if (path.startsWith('/api/proxyip/')) {
             const id = path.split('/')[3];
             if (method === 'PUT') return handleUpdateProxyIP(request, env.DB, id);
@@ -234,6 +243,15 @@ export default {
         if (path === '/api/outbound') {
             if (method === 'GET') return handleGetOutbounds(env.DB);
             if (method === 'POST') return handleAddOutbound(request, env.DB);
+        }
+        if (path === '/api/outbound/batch' && method === 'POST') {
+            return handleBatchAddOutbound(request, env.DB);
+        }
+        if (path === '/api/outbound/batch/delete' && method === 'POST') {
+            return handleBatchDeleteOutbound(request, env.DB);
+        }
+        if (path === '/api/outbound/batch/enable' && method === 'POST') {
+            return handleBatchEnableOutbound(request, env.DB);
         }
         if (path.startsWith('/api/outbound/')) {
             const id = path.split('/')[3];
@@ -254,6 +272,12 @@ export default {
         if (path === '/api/cfip/batch' && method === 'POST') {
             return handleBatchAddCFIP(request, env.DB);
         }
+        if (path === '/api/cfip/batch/delete' && method === 'POST') {
+            return handleBatchDeleteCFIP(request, env.DB);
+        }
+        if (path === '/api/cfip/batch/status' && method === 'POST') {
+            return handleBatchStatusCFIP(request, env.DB);
+        }
 
         // ARGO 订阅管理
         if (path === '/api/argo') {
@@ -268,6 +292,9 @@ export default {
             }
             if (method === 'PUT') return handleUpdateArgoSubscribe(request, env.DB, id);
             if (method === 'DELETE') return handleDeleteArgoSubscribe(env.DB, id);
+        }
+        if (path === '/api/argo/batch' && method === 'POST') {
+            return handleBatchAddArgoSubscribe(request, env.DB);
         }
         if (path === '/api/argo/batch/enable' && method === 'POST') {
             return handleBatchEnableArgoSubscribe(request, env.DB);
@@ -390,6 +417,86 @@ async function handleDeleteProxyIP(db, id) {
     return json({ success: true });
 }
 
+async function handleBatchDeleteProxyIP(request, db) {
+    const { ids } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) return json({ error: 'IDs不能为空' }, 400);
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.prepare(`DELETE FROM proxy_ips WHERE id IN (${placeholders})`).bind(...ids).run();
+    return json({ success: true });
+}
+
+async function handleBatchEnableProxyIP(request, db) {
+    const { ids, enabled } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) return json({ error: 'IDs不能为空' }, 400);
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.prepare(`UPDATE proxy_ips SET enabled = ?, updated_at = datetime("now") WHERE id IN (${placeholders})`).bind(enabled ? 1 : 0, ...ids).run();
+    return json({ success: true });
+}
+
+async function handleBatchAddProxyIP(request, db) {
+    const items = await request.json();
+    if (!Array.isArray(items) || items.length === 0) {
+        return json({ error: '数据不能为空且必须是数组' }, 400);
+    }
+
+    const max = await db.prepare('SELECT MAX(id) as m FROM proxy_ips').first();
+    let nextId = (max?.m || 0) + 1;
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const chunk = items.slice(i, i + BATCH_SIZE);
+        const statements = [];
+
+        for (const item of chunk) {
+            if (!item.address) {
+                failCount++;
+                errors.push(`Item ${i + statements.length + 1}: Address missing`);
+                continue;
+            }
+
+            const address = item.address;
+            const type = parseProxyType(address);
+            if (type === 'socks5' || type === 'http' || type === 'https') {
+                failCount++;
+                errors.push(`Item: ${address} - SOCKS5/HTTP 请添加到全局出站`);
+                continue;
+            }
+
+            const remark = item.remark || `ProxyIP-${nextId++}`;
+            const enabled = item.enabled !== undefined ? (item.enabled ? 1 : 0) : 1;
+            const sort_order = item.sort_order || 0;
+
+            statements.push(
+                db.prepare('INSERT INTO proxy_ips (address, type, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+                    .bind(address, type, remark, enabled, sort_order)
+            );
+        }
+
+        if (statements.length > 0) {
+            try {
+                const results = await db.batch(statements);
+                successCount += results.length;
+            } catch (e) {
+                console.error('Batch insert error:', e);
+                failCount += statements.length;
+                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${e.message}`);
+            }
+        }
+    }
+
+    return json({
+        success: true,
+        message: `成功添加 ${successCount} 条，失败 ${failCount} 条`,
+        data: { success: successCount, failed: failCount, errors }
+    });
+}
+
 // Outbound CRUD
 async function handleGetOutbounds(db) {
     const { results } = await db.prepare('SELECT * FROM outbounds ORDER BY sort_order, id').all();
@@ -437,6 +544,86 @@ async function handleUpdateOutbound(request, db, id) {
 async function handleDeleteOutbound(db, id) {
     await db.prepare('DELETE FROM outbounds WHERE id = ?').bind(id).run();
     return json({ success: true });
+}
+
+async function handleBatchDeleteOutbound(request, db) {
+    const { ids } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) return json({ error: 'IDs不能为空' }, 400);
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.prepare(`DELETE FROM outbounds WHERE id IN (${placeholders})`).bind(...ids).run();
+    return json({ success: true });
+}
+
+async function handleBatchEnableOutbound(request, db) {
+    const { ids, enabled } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) return json({ error: 'IDs不能为空' }, 400);
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.prepare(`UPDATE outbounds SET enabled = ?, updated_at = datetime("now") WHERE id IN (${placeholders})`).bind(enabled ? 1 : 0, ...ids).run();
+    return json({ success: true });
+}
+
+async function handleBatchAddOutbound(request, db) {
+    const items = await request.json();
+    if (!Array.isArray(items) || items.length === 0) {
+        return json({ error: '数据不能为空且必须是数组' }, 400);
+    }
+
+    const max = await db.prepare('SELECT MAX(id) as m FROM outbounds').first();
+    let nextId = (max?.m || 0) + 1;
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const chunk = items.slice(i, i + BATCH_SIZE);
+        const statements = [];
+
+        for (const item of chunk) {
+            if (!item.address) {
+                failCount++;
+                errors.push(`Item ${i + statements.length + 1}: Address missing`);
+                continue;
+            }
+
+            const address = item.address;
+            const type = parseOutboundType(address);
+            if (type === 'unknown') {
+                failCount++;
+                errors.push(`Item: ${address} - 地址格式错误`);
+                continue;
+            }
+
+            const remark = item.remark || `Outbound-${nextId++}`;
+            const enabled = item.enabled !== undefined ? (item.enabled ? 1 : 0) : 1;
+            const sort_order = item.sort_order || 0;
+
+            statements.push(
+                db.prepare('INSERT INTO outbounds (address, type, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+                    .bind(address, type, remark, enabled, sort_order)
+            );
+        }
+
+        if (statements.length > 0) {
+            try {
+                const results = await db.batch(statements);
+                successCount += results.length;
+            } catch (e) {
+                console.error('Batch insert error:', e);
+                failCount += statements.length;
+                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${e.message}`);
+            }
+        }
+    }
+
+    return json({
+        success: true,
+        message: `成功添加 ${successCount} 条，失败 ${failCount} 条`,
+        data: { success: successCount, failed: failCount, errors }
+    });
 }
 
 // CFIP CRUD
@@ -563,6 +750,27 @@ async function handleDeleteCFIP(db, id) {
     return json({ success: true });
 }
 
+async function handleBatchDeleteCFIP(request, db) {
+    const { ids } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) return json({ error: 'IDs不能为空' }, 400);
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.prepare(`DELETE FROM cf_ips WHERE id IN (${placeholders})`).bind(...ids).run();
+    return json({ success: true });
+}
+
+async function handleBatchStatusCFIP(request, db) {
+    const { ids, status } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) return json({ error: 'IDs不能为空' }, 400);
+    if (!status || !['enabled', 'disabled', 'invalid'].includes(status)) {
+        return json({ error: '状态值无效' }, 400);
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+    await db.prepare(`UPDATE cf_ips SET status = ?, updated_at = datetime("now") WHERE id IN (${placeholders})`).bind(status, ...ids).run();
+    return json({ success: true });
+}
+
 // ARGO 订阅管理
 async function handleGetArgoSubscribes(db) {
     const { results } = await db.prepare('SELECT * FROM argo_subscribe ORDER BY sort_order, id').all();
@@ -622,6 +830,59 @@ async function handleBatchDeleteArgoSubscribe(request, db) {
     const placeholders = ids.map(() => '?').join(',');
     await db.prepare(`DELETE FROM argo_subscribe WHERE id IN (${placeholders})`).bind(...ids).run();
     return json({ success: true });
+}
+
+async function handleBatchAddArgoSubscribe(request, db) {
+    const items = await request.json();
+    if (!Array.isArray(items) || items.length === 0) {
+        return json({ error: '数据不能为空且必须是数组' }, 400);
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const chunk = items.slice(i, i + BATCH_SIZE);
+        const statements = [];
+
+        for (const item of chunk) {
+            if (!item.template_link) {
+                failCount++;
+                errors.push(`Item ${i + statements.length + 1}: Template link missing`);
+                continue;
+            }
+
+            const template_link = item.template_link;
+            const token = generateRandomToken(32);
+            const remark = item.remark || '';
+            const enabled = item.enabled !== undefined ? item.enabled : 1;
+            const sort_order = item.sort_order || 0;
+
+            statements.push(
+                db.prepare('INSERT INTO argo_subscribe (token, template_link, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+                    .bind(token, template_link, remark, enabled, sort_order)
+            );
+        }
+
+        if (statements.length > 0) {
+            try {
+                const results = await db.batch(statements);
+                successCount += results.length;
+            } catch (e) {
+                console.error('Batch insert error:', e);
+                failCount += statements.length;
+                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${e.message}`);
+            }
+        }
+    }
+
+    return json({
+        success: true,
+        message: `成功添加 ${successCount} 条，失败 ${failCount} 条`,
+        data: { success: successCount, failed: failCount, errors }
+    });
 }
 
 async function handleResetArgoToken(db, id) {

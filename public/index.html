@@ -2520,7 +2520,7 @@
         function showSubscribeModal(type) {
             modalType = 'subscribe';
             editId = null;
-            document.getElementById('modalTitle').textContent = `添加${type === 'vl' ? 'V<span>LESS</span>' : type.toUpperCase()}订阅配置`;
+            document.getElementById('modalTitle').textContent = `添加订阅配置`;
             const label = type === 'vl' ? 'UUID' : '密码';
             document.getElementById('modalBody').innerHTML = `
 <input type="hidden" id="subscribeType" value="${type === 'vl' ? 'vl' + 'ess' : type}">
@@ -2540,7 +2540,7 @@
 
             modalType = 'subscribe';
             editId = id;
-            document.getElementById('modalTitle').textContent = `编辑${type === 'vl' ? 'V<span>LESS</span>' : type.toUpperCase()}订阅配置`;
+            document.getElementById('modalTitle').textContent = `编辑订阅配置`;
             const label = type === 'vl' ? 'UUID' : '密码';
             document.getElementById('modalBody').innerHTML = `
 <input type="hidden" id="subscribeType" value="${cfg}">
@@ -3214,38 +3214,27 @@
                 document.getElementById('batchAlert').innerHTML = '<div class="alert alert-warning">以下数据存在问题被跳过，将继续添加剩余数据：<br>' + errors.join('<br>') + '</div>';
             }
 
-            // 批量添加
+            // 批量添加 - 所有类型都使用批量 API
             showLoading();
             let success = 0, failed = 0;
 
-            if (batchType === 'cfip') {
-                try {
-                    const result = await api('/cfip/batch', 'POST', uniqueItems);
-                    if (result.success && result.data) {
-                        success = result.data.success;
-                        failed = result.data.failed;
-                        if (result.data.errors && result.data.errors.length > 0) {
-                            console.error('Batch errors:', result.data.errors);
-                            // Optional: Display detailed errors if needed, for now just log
-                        }
-                    } else {
-                        failed = uniqueItems.length;
-                        alert('批量添加失败: ' + (result.error || '未知错误'));
+            try {
+                const result = await api('/' + batchType + '/batch', 'POST', uniqueItems);
+                if (result.success && result.data) {
+                    success = result.data.success;
+                    failed = result.data.failed;
+                    if (result.data.errors && result.data.errors.length > 0) {
+                        console.error('Batch errors:', result.data.errors);
                     }
-                } catch (e) {
+                } else {
                     failed = uniqueItems.length;
-                    alert('批量添加请求失败: ' + e.message);
+                    alert('批量添加失败: ' + (result.error || '未知错误'));
                 }
-            } else {
-                for (const item of uniqueItems) {
-                    try {
-                        const d = await api('/' + batchType, 'POST', item);
-                        if (d.success) success++; else failed++;
-                    } catch (e) {
-                        failed++;
-                    }
-                }
+            } catch (e) {
+                failed = uniqueItems.length;
+                alert('批量添加请求失败: ' + e.message);
             }
+
             hideLoading();
 
             document.getElementById('batchAlert').innerHTML = `<div class="alert alert-success">成功添加 ${success} 条${failed > 0 ? '，失败 ' + failed + ' 条' : ''}</div>`;
@@ -3274,19 +3263,20 @@
 
             if (!confirm(`确定${enabled ? '启用' : '禁用'}选中的 ${checks.length} 项？`)) return;
 
+            const ids = checks.map(cb => parseInt(cb.value));
             showLoading();
-            let success = 0, failed = 0;
-            for (const cb of checks) {
-                try {
-                    const d = await api('/' + type + '/' + cb.value, 'PUT', { enabled });
-                    if (d.success) success++; else failed++;
-                } catch (e) {
-                    failed++;
+            try {
+                const d = await api('/' + type + '/batch/enable', 'POST', { ids, enabled });
+                if (d.success) {
+                    alert(`操作完成：成功 ${ids.length} 条`);
+                } else {
+                    alert('操作失败: ' + (d.error || '未知错误'));
                 }
+            } catch (e) {
+                alert('操作失败: ' + e.message);
             }
             hideLoading();
 
-            alert(`操作完成：成功 ${success} 条${failed > 0 ? '，失败 ' + failed + ' 条' : ''}`);
             if (type === 'proxyip') await loadProxyIPs();
             else if (type === 'outbound') await loadOutbounds();
             else if (type === 'argo') await loadArgoSubscribes();
@@ -3312,20 +3302,32 @@
             const statusNames = { enabled: '启用', disabled: '禁用', invalid: '失效' };
             if (!confirm(`确定将选中的 ${checks.length} 项设置为"${statusNames[status]}"状态？`)) return;
 
+            const ids = checks.map(cb => parseInt(cb.value));
             showLoading();
-            let success = 0, failed = 0;
-            for (const cb of checks) {
-                try {
-                    const data = type === 'cfip' ? { status } : { status, enabled: status === 'enabled' };
-                    const d = await api('/' + type + '/' + cb.value, 'PUT', data);
-                    if (d.success) success++; else failed++;
-                } catch (e) {
-                    failed++;
+            try {
+                // cfip 使用 batch/status，其他类型使用 batch/enable
+                if (type === 'cfip') {
+                    const d = await api('/cfip/batch/status', 'POST', { ids, status });
+                    if (d.success) {
+                        alert(`操作完成：成功 ${ids.length} 条`);
+                    } else {
+                        alert('操作失败: ' + (d.error || '未知错误'));
+                    }
+                } else {
+                    // 对于 proxyip 和 outbound，设置状态实际上是设置 enabled
+                    const enabled = status === 'enabled';
+                    const d = await api('/' + type + '/batch/enable', 'POST', { ids, enabled });
+                    if (d.success) {
+                        alert(`操作完成：成功 ${ids.length} 条`);
+                    } else {
+                        alert('操作失败: ' + (d.error || '未知错误'));
+                    }
                 }
+            } catch (e) {
+                alert('操作失败: ' + e.message);
             }
             hideLoading();
 
-            alert(`操作完成：成功 ${success} 条${failed > 0 ? '，失败 ' + failed + ' 条' : ''}`);
             if (type === 'proxyip') await loadProxyIPs();
             else if (type === 'outbound') await loadOutbounds();
             else if (type === 'argo') await loadArgoSubscribes();
@@ -3347,19 +3349,20 @@
 
             if (!confirm(`确定删除选中的 ${checks.length} 项？`)) return;
 
+            const ids = checks.map(cb => parseInt(cb.value));
             showLoading();
-            let success = 0, failed = 0;
-            for (const cb of checks) {
-                try {
-                    const d = await api('/' + type + '/' + cb.value, 'DELETE');
-                    if (d.success) success++; else failed++;
-                } catch (e) {
-                    failed++;
+            try {
+                const d = await api('/' + type + '/batch/delete', 'POST', { ids });
+                if (d.success) {
+                    alert(`删除完成：成功 ${ids.length} 条`);
+                } else {
+                    alert('删除失败: ' + (d.error || '未知错误'));
                 }
+            } catch (e) {
+                alert('删除失败: ' + e.message);
             }
             hideLoading();
 
-            alert(`删除完成：成功 ${success} 条${failed > 0 ? '，失败 ' + failed + ' 条' : ''}`);
             if (type === 'proxyip') await loadProxyIPs();
             else if (type === 'outbound') await loadOutbounds();
             else if (type === 'argo') await loadArgoSubscribes();
