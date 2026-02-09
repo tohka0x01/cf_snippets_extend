@@ -251,6 +251,9 @@ export default {
             if (method === 'PUT') return handleUpdateCFIP(request, env.DB, id);
             if (method === 'DELETE') return handleDeleteCFIP(env.DB, id);
         }
+        if (path === '/api/cfip/batch' && method === 'POST') {
+            return handleBatchAddCFIP(request, env.DB);
+        }
 
         // ARGO 订阅管理
         if (path === '/api/argo') {
@@ -453,6 +456,83 @@ async function handleAddCFIP(request, db) {
         .bind(address, port, finalRemark, name || null, sort_order, latency || null, speed || null, country || null, isp || null, fail_count, status).run();
 
     return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark, name, latency, speed, country, isp, fail_count, status } });
+}
+
+async function handleBatchAddCFIP(request, db) {
+    const items = await request.json();
+    if (!Array.isArray(items) || items.length === 0) {
+        return json({ error: '数据不能为空且必须是数组' }, 400);
+    }
+
+    // Get current max ID for remark generation
+    const max = await db.prepare('SELECT MAX(id) as m FROM cf_ips').first();
+    let nextId = (max?.m || 0) + 1;
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    // Cloudflare D1 supports batch execution which is faster than sequential awaits
+    // However, D1 batch size is limited (around 100 statements usually safe)
+    // We will process in chunks of 50 to be safe and efficient
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const chunk = items.slice(i, i + BATCH_SIZE);
+        const statements = [];
+
+        for (const item of chunk) {
+            // Validate item
+            if (!item.address) {
+                failCount++;
+                errors.push(`Item ${i + statements.length + 1}: Address missing`);
+                continue;
+            }
+
+            const address = item.address;
+            const port = item.port || 443;
+            // Remark logic: use provided remark, or generated one
+            // Note: If we use batch, we can't easily get the ID of each inserted row to generate "CFIP-ID" 
+            // strictly sequential if we depend on auto-increment for the ID part in the name *before* insertion.
+            // But we can approximate using nextId counter.
+            const remark = item.remark || `CFIP-${nextId++}`;
+
+            const name = item.name || null;
+            const sort_order = item.sort_order || 0;
+            const latency = item.latency || null;
+            const speed = item.speed || null;
+            const country = item.country || null;
+            const isp = item.isp || null;
+            const fail_count = item.fail_count || 0;
+            const status = item.status || 'enabled';
+
+            statements.push(
+                db.prepare('INSERT INTO cf_ips (address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+                    .bind(address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status)
+            );
+        }
+
+        if (statements.length > 0) {
+            try {
+                // Execute batch
+                const results = await db.batch(statements);
+                // results is an array of result objects
+                successCount += results.length;
+            } catch (e) {
+                // If batch fails, we could try fallback or just count as fail
+                // For simplicity, if a batch fails, we assume all in that batch failed or there was a constraint error
+                console.error('Batch insert error:', e);
+                failCount += statements.length;
+                errors.push(`Batch ${i / BATCH_SIZE + 1} failed: ${e.message}`);
+            }
+        }
+    }
+
+    return json({
+        success: true,
+        message: `成功添加 ${successCount} 条，失败 ${failCount} 条`,
+        data: { success: successCount, failed: failCount, errors }
+    });
 }
 
 async function handleUpdateCFIP(request, db, id) {

@@ -1177,6 +1177,14 @@
             <div id="batchHelp"
                 style="background:#f7f9fc;padding:10px;border-radius:6px;margin-bottom:12px;font-size:12px;color:#666">
             </div>
+            <div class="form-group" id="batchStatusGroup" style="display:none">
+                <label>初始状态</label>
+                <select id="batchStatusSelect">
+                    <option value="enabled">启用</option>
+                    <option value="disabled">禁用</option>
+                    <option value="invalid">失效</option>
+                </select>
+            </div>
             <div class="form-group"><label>批量数据（每行一条）</label><textarea id="batchInput" rows="10"
                     style="width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:monospace"></textarea>
             </div>
@@ -2858,6 +2866,15 @@
             } else {
                 document.getElementById('batchHelp').innerHTML = '<b>格式说明：</b>每行一条，格式为：<br>• IP/域名#名字#备注<br>• IP/域名:端口#名字#备注<br>名字和备注可选，名字不自动生成，备注默认为空';
             }
+
+            const statusGroup = document.getElementById('batchStatusGroup');
+            if (type === 'cfip') {
+                statusGroup.style.display = 'block';
+                document.getElementById('batchStatusSelect').value = 'enabled'; // Default
+            } else {
+                statusGroup.style.display = 'none';
+            }
+
             document.getElementById('batchModal').classList.remove('hidden');
         }
 
@@ -2985,12 +3002,37 @@
                 }
 
                 // 导入新数据（两种模式都执行）
-                const results = await Promise.all([
+                const results = [];
+                // ProxyIPs & Outbounds & Argo (Sequential or Parallel Single-Item)
+                const otherPromises = [
                     ...data.proxyips.map(item => api('/proxyip', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
                     ...data.outbounds.map(item => api('/outbound', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
-                    ...data.cfips.map(item => api('/cfip', 'POST', { address: item.address, port: item.port, remark: item.remark, name: item.name, fail_count: item.fail_count, status: item.status || 'enabled' })),
                     ...(data.argo || []).map(item => api('/argo', 'POST', { template_link: item.template_link, remark: item.remark, enabled: item.enabled }))
-                ]);
+                ];
+
+                // Execute other types
+                if (otherPromises.length > 0) {
+                    await Promise.all(otherPromises);
+                }
+
+                // CFIPs (Batch API)
+                if (data.cfips && data.cfips.length > 0) {
+                    // Ensure data format matches expectations
+                    const cfipItems = data.cfips.map(item => ({
+                        address: item.address,
+                        port: item.port,
+                        remark: item.remark,
+                        name: item.name,
+                        fail_count: item.fail_count,
+                        status: item.status || 'enabled',
+                        // Optional fields might be needed if export includes them
+                        latency: item.latency,
+                        speed: item.speed,
+                        country: item.country,
+                        isp: item.isp
+                    }));
+                    await api('/cfip/batch', 'POST', cfipItems);
+                }
 
                 // 更新 V<span>LESS</span> 配置
                 if (data.vlConfig && data.vlConfig.uuid) {
@@ -3119,7 +3161,8 @@
                             port = parseInt(ap[1]) || 443;
                         }
 
-                        items.push({ address, port, name, remark });
+                        const initialStatus = document.getElementById('batchStatusSelect').value || 'enabled';
+                        items.push({ address, port, name, remark, status: initialStatus });
                     }
                 } catch (e) {
                     errors.push(`第${lineNum}行: ${e.message}`);
@@ -3174,12 +3217,33 @@
             // 批量添加
             showLoading();
             let success = 0, failed = 0;
-            for (const item of uniqueItems) {
+
+            if (batchType === 'cfip') {
                 try {
-                    const d = await api('/' + batchType, 'POST', item);
-                    if (d.success) success++; else failed++;
+                    const result = await api('/cfip/batch', 'POST', uniqueItems);
+                    if (result.success && result.data) {
+                        success = result.data.success;
+                        failed = result.data.failed;
+                        if (result.data.errors && result.data.errors.length > 0) {
+                            console.error('Batch errors:', result.data.errors);
+                            // Optional: Display detailed errors if needed, for now just log
+                        }
+                    } else {
+                        failed = uniqueItems.length;
+                        alert('批量添加失败: ' + (result.error || '未知错误'));
+                    }
                 } catch (e) {
-                    failed++;
+                    failed = uniqueItems.length;
+                    alert('批量添加请求失败: ' + e.message);
+                }
+            } else {
+                for (const item of uniqueItems) {
+                    try {
+                        const d = await api('/' + batchType, 'POST', item);
+                        if (d.success) success++; else failed++;
+                    } catch (e) {
+                        failed++;
+                    }
                 }
             }
             hideLoading();
