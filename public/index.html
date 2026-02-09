@@ -1360,12 +1360,32 @@
         }
 
         function logout() { apiKey = null; localStorage.removeItem('apiKey'); document.getElementById('loginPage').classList.remove('hidden'); document.getElementById('mainPage').classList.add('hidden') }
-        function showMain() { document.getElementById('loginPage').classList.add('hidden'); document.getElementById('mainPage').classList.remove('hidden') }
+        function showMain() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainPage').classList.remove('hidden');
+            restoreActiveTab();
+        }
+
+        function restoreActiveTab() {
+            const t = localStorage.getItem('activeTab');
+            if (t) {
+                const btn = document.querySelector(`.tab[onclick*="'${t}'"]`);
+                if (btn) {
+                    // Manually switch tab without creating loop
+                    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+                    document.querySelectorAll('.panel').forEach(x => x.classList.add('hidden'));
+                    btn.classList.add('active');
+                    const panel = document.getElementById(t + 'Panel');
+                    if (panel) panel.classList.remove('hidden');
+                }
+            }
+        }
 
         function switchTab(t, el) {
             document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(x => x.classList.add('hidden'));
             el.classList.add('active'); document.getElementById(t + 'Panel').classList.remove('hidden');
+            localStorage.setItem('activeTab', t);
         }
 
         async function api(path, method = 'GET', body = null) {
