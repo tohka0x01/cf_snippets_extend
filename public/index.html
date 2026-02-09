@@ -999,7 +999,11 @@
                 style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:10px;background:#f7f9fc;border-radius:8px">
                 <button id="cfipPrevBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">◀ 上一页</button>
                 <span id="cfipPageInfoTop" style="font-size:13px;color:#666">Page 1 of 1 (Total 0)</span>
-                <button id="cfipNextBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页 ▶</button>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button id="cfipNextBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页
+                        ▶</button>
+                    <button class="btn btn-info btn-sm" onclick="refreshCFIPs()" title="刷新数据">🔄 刷新</button>
+                </div>
             </div>
             <div
                 style="display:flex;gap:12px;margin-bottom:12px;align-items:center;background:#f7f9fc;padding:8px;border-radius:8px">
@@ -1253,7 +1257,7 @@
 
         // Global state for CFIP pagination and search
         let cfipSearchText = '';
-        let cfipStatusFilter = ['enabled', 'disabled', 'invalid'];
+        let cfipStatusFilter = JSON.parse(localStorage.getItem('cfipStatusFilter')) || ['enabled', 'disabled', 'invalid'];
         let cfipPageSize = 20;
         let cfipCurrentPage = 1;
         // Column visibility settings (default: hide optional columns)
@@ -1758,7 +1762,27 @@
             if (d.success) {
                 cachedCFIPs = d.data; // 更新缓存
                 renderCFIPs();
+                initCFIPStatusCheckboxes(); // 初始化checkbox状态
             }
+        }
+
+        async function refreshCFIPs() {
+            showLoading();
+            await loadCFIPs();
+            hideLoading();
+        }
+
+        function initCFIPStatusCheckboxes() {
+            // 根据 cfipStatusFilter 初始化checkbox状态
+            const enabledCheck = document.querySelector('input.cfip-status-check[value="enabled"]');
+            const disabledCheck = document.querySelector('input.cfip-status-check[value="disabled"]');
+            const invalidCheck = document.querySelector('input.cfip-status-check[value="invalid"]');
+            const allCheck = document.querySelector('input[value="all"]');
+
+            if (enabledCheck) enabledCheck.checked = cfipStatusFilter.includes('enabled');
+            if (disabledCheck) disabledCheck.checked = cfipStatusFilter.includes('disabled');
+            if (invalidCheck) invalidCheck.checked = cfipStatusFilter.includes('invalid');
+            if (allCheck) allCheck.checked = cfipStatusFilter.length === 3;
         }
 
         function renderCFIPs() {
@@ -1773,9 +1797,9 @@
                     let valA = a[cfipSortColumn];
                     let valB = b[cfipSortColumn];
 
-                    if (cfipSortColumn === 'id' || cfipSortColumn === 'port' || cfipSortColumn === 'fail_count') {
-                        valA = parseInt(valA) || 0;
-                        valB = parseInt(valB) || 0;
+                    if (cfipSortColumn === 'id' || cfipSortColumn === 'port' || cfipSortColumn === 'fail_count' || cfipSortColumn === 'speed' || cfipSortColumn === 'latency') {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
                     } else {
                         valA = (valA || '').toString().toLowerCase();
                         valB = (valB || '').toString().toLowerCase();
@@ -1949,6 +1973,7 @@
                 if (allCheck) allCheck.checked = allChecked;
             }
             cfipCurrentPage = 1;
+            localStorage.setItem('cfipStatusFilter', JSON.stringify(cfipStatusFilter));
             renderCFIPs();
         }
 
