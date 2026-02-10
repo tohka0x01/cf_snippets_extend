@@ -278,6 +278,9 @@ export default {
         if (path === '/api/cfip/batch/status' && method === 'POST') {
             return handleBatchStatusCFIP(request, env.DB);
         }
+        if (path === '/api/cfip/batch/update' && method === 'POST') {
+            return handleBatchUpdateCFIP(request, env.DB);
+        }
 
         // ARGO 订阅管理
         if (path === '/api/argo') {
@@ -769,6 +772,70 @@ async function handleBatchStatusCFIP(request, db) {
     const placeholders = ids.map(() => '?').join(',');
     await db.prepare(`UPDATE cf_ips SET status = ?, updated_at = datetime("now") WHERE id IN (${placeholders})`).bind(status, ...ids).run();
     return json({ success: true });
+}
+
+async function handleBatchUpdateCFIP(request, db) {
+    const { items } = await request.json();
+    if (!Array.isArray(items) || items.length === 0) {
+        return json({ error: '数据不能为空且必须是数组' }, 400);
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+    const BATCH_SIZE = 50;
+    const allowedFields = ['name', 'latency', 'speed', 'country', 'isp', 'fail_count', 'status', 'remark', 'address', 'port', 'sort_order'];
+
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const chunk = items.slice(i, i + BATCH_SIZE);
+        const statements = [];
+
+        for (const item of chunk) {
+            if (!item.id) {
+                failCount++;
+                errors.push(`Item missing id`);
+                continue;
+            }
+
+            const sets = [];
+            const vals = [];
+            for (const field of allowedFields) {
+                if (item[field] !== undefined) {
+                    sets.push(`${field} = ?`);
+                    vals.push(item[field]);
+                }
+            }
+
+            if (sets.length === 0) {
+                failCount++;
+                errors.push(`Item ${item.id}: no fields to update`);
+                continue;
+            }
+
+            sets.push('updated_at = datetime("now")');
+            vals.push(item.id);
+            statements.push(
+                db.prepare(`UPDATE cf_ips SET ${sets.join(', ')} WHERE id = ?`).bind(...vals)
+            );
+        }
+
+        if (statements.length > 0) {
+            try {
+                await db.batch(statements);
+                successCount += statements.length;
+            } catch (e) {
+                console.error('Batch update error:', e);
+                failCount += statements.length;
+                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${e.message}`);
+            }
+        }
+    }
+
+    return json({
+        success: true,
+        message: `成功更新 ${successCount} 条，失败 ${failCount} 条`,
+        data: { success: successCount, failed: failCount, errors }
+    });
 }
 
 // ARGO 订阅管理
