@@ -273,7 +273,9 @@
             padding: 24px;
             border-radius: 16px;
             width: 100%;
-            max-width: 450px
+            max-width: 450px;
+            max-height: 90vh;
+            overflow-y: auto
         }
 
         .modal-content-large {
@@ -3205,13 +3207,13 @@
 
             // 如果只有重复错误，且没有有效数据，则停止
             if (uniqueItems.length === 0 && errors.length > 0) {
-                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-error">所有数据均为重复或格式错误<br>' + errors.join('<br>') + '</div>';
+                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-error" style="max-height:300px;overflow-y:auto">所有数据均为重复或格式错误<br>' + errors.join('<br>') + '</div>';
                 return;
             }
 
             // 如果有部分错误（格式错误或重复），但也有有效数据，显示错误提示但继续执行
             if (errors.length > 0) {
-                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-warning">以下数据存在问题被跳过，将继续添加剩余数据：<br>' + errors.join('<br>') + '</div>';
+                document.getElementById('batchAlert').innerHTML = '<div class="alert alert-warning" style="max-height:300px;overflow-y:auto">以下数据存在问题被跳过，将继续添加剩余数据：<br>' + errors.join('<br>') + '</div>';
             }
 
             // 批量添加 - 所有类型都使用批量 API
