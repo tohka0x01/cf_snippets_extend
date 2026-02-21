@@ -1330,6 +1330,8 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     const proxyipIds = urlParams.get('proxyip')?.split(',').filter(id => id.trim()) || [];
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
+    const smartNodeParam = urlParams.get('smartNode');
+    const enableSmartNode = smartNodeParam === '1' || smartNodeParam === 'true';
 
     // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
     // 支持旧的 status 参数作为后备
@@ -1410,6 +1412,53 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         }
     }
 
+    // 智能节点：在最前面插入最大速度和最低延迟节点
+    if (enableSmartNode) {
+        // 找出速度最大的 CFIP
+        const maxSpeedCfip = cfips.reduce((best, c) => (!best || (c.speed || 0) > (best.speed || 0)) ? c : best, null);
+        // 找出延迟最低的 CFIP（排除 latency 为 0 或 NULL）
+        const validLatencyCfips = cfips.filter(c => c.latency && c.latency > 0);
+        const minLatencyCfip = validLatencyCfips.length > 0
+            ? validLatencyCfips.reduce((best, c) => (!best || c.latency < best.latency) ? c : best, null)
+            : null;
+
+        const smartLinks = [];
+        if (allProxies.length === 0) {
+            // 无 proxy 模式
+            if (maxSpeedCfip) {
+                let host = maxSpeedCfip.address;
+                if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                const nodeName = `最大速度-${configRemark}`;
+                smartLinks.push(`v${'less'}://${uuid}@${host}:${maxSpeedCfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
+            }
+            if (minLatencyCfip) {
+                let host = minLatencyCfip.address;
+                if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                const nodeName = `最低延迟-${configRemark}`;
+                smartLinks.push(`v${'less'}://${uuid}@${host}:${minLatencyCfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(proxyPath)}#${encodeURIComponent(nodeName)}`);
+            }
+        } else {
+            // 有 proxy 模式，为每个 proxy 生成智能节点
+            for (const proxyip of allProxies) {
+                if (maxSpeedCfip) {
+                    let host = maxSpeedCfip.address;
+                    if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                    const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                    const nodeName = `最大速度-${proxyip.remark}`;
+                    smartLinks.push(`v${'less'}://${uuid}@${host}:${maxSpeedCfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
+                }
+                if (minLatencyCfip) {
+                    let host = minLatencyCfip.address;
+                    if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                    const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                    const nodeName = `最低延迟-${proxyip.remark}`;
+                    smartLinks.push(`v${'less'}://${uuid}@${host}:${minLatencyCfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
+                }
+            }
+        }
+        links.unshift(...smartLinks);
+    }
+
     return new Response(btoa(unescape(encodeURIComponent(links.join('\n')))), {
         headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
     });
@@ -1428,6 +1477,8 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
     const proxyipIds = urlParams.get('proxyip')?.split(',').filter(id => id.trim()) || [];
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
+    const smartNodeParam = urlParams.get('smartNode');
+    const enableSmartNode = smartNodeParam === '1' || smartNodeParam === 'true';
 
     // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
     const cfipStatusParam = urlParams.get('cfipStatus');
@@ -1519,6 +1570,64 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
                 links.push(ssLink);
             }
         }
+    }
+
+    // 智能节点：在最前面插入最大速度和最低延迟节点
+    if (enableSmartNode) {
+        const maxSpeedCfip = cfips.reduce((best, c) => (!best || (c.speed || 0) > (best.speed || 0)) ? c : best, null);
+        const validLatencyCfips = cfips.filter(c => c.latency && c.latency > 0);
+        const minLatencyCfip = validLatencyCfips.length > 0
+            ? validLatencyCfips.reduce((best, c) => (!best || c.latency < best.latency) ? c : best, null)
+            : null;
+
+        const ssConfigStr = `${method}:${password}`;
+        const encodedConfig = btoa(ssConfigStr);
+        const smartLinks = [];
+
+        if (allProxies.length === 0) {
+            if (maxSpeedCfip) {
+                let host = maxSpeedCfip.address;
+                if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                const port = maxSpeedCfip.port || 443;
+                const nodeName = `最大速度-${configRemark}`;
+                const pathWithQuery = proxyPath + '/?ed=2560';
+                const encodedPath = pathWithQuery.replace(/=/g, '%3D');
+                smartLinks.push(`ss://${encodedConfig}@${host}:${port}?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D${config.snippets_domain};path%3D${encodedPath};tls;sni%3D${config.snippets_domain};skip-cert-verify%3Dtrue;mux%3D0#${encodeURIComponent(nodeName)}`);
+            }
+            if (minLatencyCfip) {
+                let host = minLatencyCfip.address;
+                if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                const port = minLatencyCfip.port || 443;
+                const nodeName = `最低延迟-${configRemark}`;
+                const pathWithQuery = proxyPath + '/?ed=2560';
+                const encodedPath = pathWithQuery.replace(/=/g, '%3D');
+                smartLinks.push(`ss://${encodedConfig}@${host}:${port}?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D${config.snippets_domain};path%3D${encodedPath};tls;sni%3D${config.snippets_domain};skip-cert-verify%3Dtrue;mux%3D0#${encodeURIComponent(nodeName)}`);
+            }
+        } else {
+            for (const proxyip of allProxies) {
+                if (maxSpeedCfip) {
+                    let host = maxSpeedCfip.address;
+                    if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                    const port = maxSpeedCfip.port || 443;
+                    const nodeName = `最大速度-${proxyip.remark}`;
+                    const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                    const pathWithQuery = path + '&ed=2560';
+                    const encodedPath = pathWithQuery.replace(/=/g, '%3D');
+                    smartLinks.push(`ss://${encodedConfig}@${host}:${port}?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D${config.snippets_domain};path%3D${encodedPath};tls;sni%3D${config.snippets_domain};skip-cert-verify%3Dtrue;mux%3D0#${encodeURIComponent(nodeName)}`);
+                }
+                if (minLatencyCfip) {
+                    let host = minLatencyCfip.address;
+                    if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+                    const port = minLatencyCfip.port || 443;
+                    const nodeName = `最低延迟-${proxyip.remark}`;
+                    const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                    const pathWithQuery = path + '&ed=2560';
+                    const encodedPath = pathWithQuery.replace(/=/g, '%3D');
+                    smartLinks.push(`ss://${encodedConfig}@${host}:${port}?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D${config.snippets_domain};path%3D${encodedPath};tls;sni%3D${config.snippets_domain};skip-cert-verify%3Dtrue;mux%3D0#${encodeURIComponent(nodeName)}`);
+                }
+            }
+        }
+        links.unshift(...smartLinks);
     }
 
     return new Response(btoa(unescape(encodeURIComponent(links.join('\n')))), {
