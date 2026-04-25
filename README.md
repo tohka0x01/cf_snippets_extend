@@ -358,6 +358,8 @@
 - `proxyip`：指定ProxyIP的ID，多个ID用逗号分隔
 - `outbound`：指定全局出站的ID，多个ID用逗号分隔
 - `cfip`：指定CFIP的ID，多个ID用逗号分隔
+- `speedTop`：在订阅最前面追加“最大速度”节点的数量
+- `latencyTop`：在订阅最前面追加“最低延迟”节点的数量
 
 **使用示例：**
 
@@ -397,9 +399,15 @@
    ```
    生成ID为1、2的ProxyIP和ID为3的全局出站 × ID为1、2的CFIP的订阅
 
+7. **追加高速和低延迟节点**：
+   ```
+   https://你的Pages域名/sub/你的UUID?speedTop=5&latencyTop=2
+   ```
+   在订阅最前面追加 5 个最大速度节点和 2 个最低延迟节点
+
 **SS订阅同样支持：**
 ```
-https://你的Pages域名/sub/ss/你的密码?proxyip=1,2&cfip=1,2,3
+https://你的Pages域名/sub/ss/你的密码?proxyip=1,2&cfip=1,2,3&speedTop=3&latencyTop=3
 ```
 
 **重要说明：**

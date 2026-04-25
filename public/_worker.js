@@ -152,6 +152,26 @@ function parseCfipStatusConditions(cfipStatusParam) {
     return conditions;
 }
 
+function parseSmartNodeCount(value) {
+    if (value === null || value === undefined || value === '') {
+        return 0;
+    }
+
+    const count = Number.parseInt(value, 10);
+    if (!Number.isFinite(count) || count <= 0) {
+        return 0;
+    }
+
+    return count;
+}
+
+function parseSmartNodeCounts(urlParams) {
+    return {
+        topSpeedCount: parseSmartNodeCount(urlParams.get('speedTop')),
+        topLatencyCount: parseSmartNodeCount(urlParams.get('latencyTop')),
+    };
+}
+
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -1330,8 +1350,8 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     const proxyipIds = urlParams.get('proxyip')?.split(',').filter(id => id.trim()) || [];
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
-    const smartNodeParam = urlParams.get('smartNode');
-    const enableSmartNode = smartNodeParam === '1' || smartNodeParam === 'true';
+    const { topSpeedCount, topLatencyCount } = parseSmartNodeCounts(urlParams);
+    const enableSmartNode = topSpeedCount > 0 || topLatencyCount > 0;
 
     // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
     // 支持旧的 status 参数作为后备
@@ -1412,13 +1432,15 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         }
     }
 
-    // 智能节点：在最前面插入最大速度前三和最低延迟前三节点
+    // 智能节点：在最前面插入最大速度和最低延迟节点
     if (enableSmartNode) {
-        // 找出速度最大的前3个 CFIP
-        const topSpeedCfips = [...cfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, 3);
-        // 找出延迟最低的前3个 CFIP（排除 latency 为 0 或 NULL）
-        const topLatencyCfips = cfips.filter(c => c.latency && c.latency > 0)
-            .sort((a, b) => a.latency - b.latency).slice(0, 3);
+        const topSpeedCfips = topSpeedCount > 0
+            ? [...cfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, topSpeedCount)
+            : [];
+        const topLatencyCfips = topLatencyCount > 0
+            ? cfips.filter(c => c.latency && c.latency > 0)
+                .sort((a, b) => a.latency - b.latency).slice(0, topLatencyCount)
+            : [];
 
         const smartLinks = [];
         if (allProxies.length === 0) {
@@ -1475,8 +1497,8 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
     const proxyipIds = urlParams.get('proxyip')?.split(',').filter(id => id.trim()) || [];
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
-    const smartNodeParam = urlParams.get('smartNode');
-    const enableSmartNode = smartNodeParam === '1' || smartNodeParam === 'true';
+    const { topSpeedCount, topLatencyCount } = parseSmartNodeCounts(urlParams);
+    const enableSmartNode = topSpeedCount > 0 || topLatencyCount > 0;
 
     // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
     const cfipStatusParam = urlParams.get('cfipStatus');
@@ -1570,11 +1592,15 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
         }
     }
 
-    // 智能节点：在最前面插入最大速度前三和最低延迟前三节点
+    // 智能节点：在最前面插入最大速度和最低延迟节点
     if (enableSmartNode) {
-        const topSpeedCfips = [...cfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, 3);
-        const topLatencyCfips = cfips.filter(c => c.latency && c.latency > 0)
-            .sort((a, b) => a.latency - b.latency).slice(0, 3);
+        const topSpeedCfips = topSpeedCount > 0
+            ? [...cfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, topSpeedCount)
+            : [];
+        const topLatencyCfips = topLatencyCount > 0
+            ? cfips.filter(c => c.latency && c.latency > 0)
+                .sort((a, b) => a.latency - b.latency).slice(0, topLatencyCount)
+            : [];
 
         const ssConfigStr = `${method}:${password}`;
         const encodedConfig = btoa(ssConfigStr);
@@ -4013,5 +4039,4 @@ async function handleClashSubscribe(db, url, env) {
         }
     });
 }
-
 
