@@ -360,6 +360,7 @@
 - `cfip`：指定CFIP的ID，多个ID用逗号分隔
 - `speedTop`：在订阅最前面追加“最大速度”节点的数量
 - `latencyTop`：在订阅最前面追加“最低延迟”节点的数量
+- `speedTop` 和 `latencyTop` 只会从 IP 类型的 CFIP 中挑选，自动排除域名类型
 
 **使用示例：**
 

@@ -172,6 +172,10 @@ function parseSmartNodeCounts(urlParams) {
     };
 }
 
+function getSmartNodeCfips(cfips) {
+    return cfips.filter(cfip => parseProxyType(cfip?.address) !== 'domain');
+}
+
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -1434,11 +1438,12 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
 
     // 智能节点：在最前面插入最大速度和最低延迟节点
     if (enableSmartNode) {
+        const smartNodeCfips = getSmartNodeCfips(cfips);
         const topSpeedCfips = topSpeedCount > 0
-            ? [...cfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, topSpeedCount)
+            ? [...smartNodeCfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, topSpeedCount)
             : [];
         const topLatencyCfips = topLatencyCount > 0
-            ? cfips.filter(c => c.latency && c.latency > 0)
+            ? smartNodeCfips.filter(c => c.latency && c.latency > 0)
                 .sort((a, b) => a.latency - b.latency).slice(0, topLatencyCount)
             : [];
 
@@ -1594,11 +1599,12 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
 
     // 智能节点：在最前面插入最大速度和最低延迟节点
     if (enableSmartNode) {
+        const smartNodeCfips = getSmartNodeCfips(cfips);
         const topSpeedCfips = topSpeedCount > 0
-            ? [...cfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, topSpeedCount)
+            ? [...smartNodeCfips].sort((a, b) => (b.speed || 0) - (a.speed || 0)).slice(0, topSpeedCount)
             : [];
         const topLatencyCfips = topLatencyCount > 0
-            ? cfips.filter(c => c.latency && c.latency > 0)
+            ? smartNodeCfips.filter(c => c.latency && c.latency > 0)
                 .sort((a, b) => a.latency - b.latency).slice(0, topLatencyCount)
             : [];
 
@@ -4039,4 +4045,3 @@ async function handleClashSubscribe(db, url, env) {
         }
     });
 }
-
