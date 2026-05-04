@@ -33,9 +33,26 @@
 
 - `sync_blacklisted = 1` 的 CFIP 会保留在管理接口 `/api/cfip` 中。
 - `sync_blacklisted = 1` 的 CFIP 不会从 `/api/internal/cfip` 返回。
-- 公开订阅和订阅生成接口会强制排除 `sync_blacklisted = 1` 的 CFIP。
-- 即使 URL 显式传入 `?cfip=1,2,3`，被拉黑的 CFIP 也不会进入订阅。
-- `status` 和 `sync_blacklisted` 是独立字段：禁用/失效控制状态筛选，黑名单控制是否允许参与 CF 同步和订阅输出。
+- 公开订阅和订阅生成接口默认排除 `sync_blacklisted = 1` 的 CFIP。
+- 如果对应订阅配置开启 `include_blacklisted_cfip = 1`，被拉黑的 CFIP 可以参与订阅生成。
+- `status` 和 `sync_blacklisted` 是独立字段：禁用/失效控制状态筛选，黑名单始终控制 CF 同步；订阅是否包含黑名单由订阅配置控制。
+
+## 订阅配置黑名单字段
+
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `include_blacklisted_cfip` | number | `1` 表示该订阅生成时包含已拉黑 CFIP，`0` 表示排除，默认 `0` |
+
+该字段适用于：
+
+- `/api/subscribe/config`
+- `/api/argo`
+- `/api/subscribe/vless/generate`
+- `/api/subscribe/ss/generate`
+
+请求体兼容驼峰别名 `includeBlacklistedCfip`。
+
+`/api/subscribe/vless/generate` 和 `/api/subscribe/ss/generate` 未传该字段时保留已有订阅配置值；没有已有配置时按默认 `0` 处理。
 
 ## 获取管理列表
 
@@ -239,7 +256,7 @@
 
 ## 订阅相关黑名单行为
 
-以下入口都会排除 `sync_blacklisted = 1` 的 CFIP：
+以下入口默认排除 `sync_blacklisted = 1` 的 CFIP；如果对应订阅配置开启 `include_blacklisted_cfip = 1`，则订阅生成会包含已拉黑 CFIP：
 
 - `/sub/token/{token}`
 - `/sub/{uuid}`
@@ -248,13 +265,15 @@
 - `/api/subscribe/vless/generate`
 - `/api/subscribe/ss/generate`
 
+`/api/internal/cfip` 不受该设置影响，始终排除已拉黑 CFIP。
+
 `cfipStatus` 仍用于状态筛选：
 
 ```text
 /sub/{uuid}?cfipStatus=enabled,invalid
 ```
 
-显式指定 CFIP ID 时，状态不强制检查，但黑名单仍强制生效：
+显式指定 CFIP ID 时，状态不强制检查；黑名单是否生效由订阅配置的 `include_blacklisted_cfip` 决定：
 
 ```text
 /sub/{uuid}?cfip=1,2,3

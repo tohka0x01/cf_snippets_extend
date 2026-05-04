@@ -15,8 +15,8 @@ async function initDB(db) {
         CREATE TABLE IF NOT EXISTS proxy_ips (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS outbounds (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, exit_country TEXT, exit_city TEXT, exit_ip TEXT, exit_org TEXT, checked_at TEXT, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS cf_ips (id INTEGER PRIMARY KEY, address TEXT, port INTEGER DEFAULT 443, remark TEXT, sort_order INTEGER DEFAULT 0, sync_blacklisted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS subscribe_config (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, token TEXT UNIQUE NOT NULL, uuid TEXT, snippets_domain TEXT, proxy_path TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS argo_subscribe (id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, template_link TEXT NOT NULL, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS subscribe_config (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, token TEXT UNIQUE NOT NULL, uuid TEXT, snippets_domain TEXT, proxy_path TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, include_blacklisted_cfip INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS argo_subscribe (id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, template_link TEXT NOT NULL, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, include_blacklisted_cfip INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
     `).catch(() => { });
 
     // 为已存在的 outbounds 表添加新列（如果不存在）
@@ -71,6 +71,7 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN remark TEXT`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN enabled INTEGER DEFAULT 1`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN sort_order INTEGER DEFAULT 0`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN include_blacklisted_cfip INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN created_at TEXT`).run().catch(() => { });
 
         // 为所有没有 token 的配置生成 token
@@ -83,6 +84,12 @@ async function initDB(db) {
         }
     } catch (e) {
         console.error('Subscribe config migration error:', e);
+    }
+
+    try {
+        await db.prepare(`ALTER TABLE argo_subscribe ADD COLUMN include_blacklisted_cfip INTEGER DEFAULT 0`).run().catch(() => { });
+    } catch (e) {
+        // 忽略错误
     }
 }
 
@@ -104,6 +111,28 @@ function getSyncBlacklistedValue(body, defaultValue = false) {
     if (body.sync_blacklisted !== undefined) return parseBooleanFlag(body.sync_blacklisted) ? 1 : 0;
     if (body.blacklisted !== undefined) return parseBooleanFlag(body.blacklisted) ? 1 : 0;
     return defaultValue ? 1 : 0;
+}
+
+function getIncludeBlacklistedCfipValue(body, defaultValue = false) {
+    if (body.include_blacklisted_cfip !== undefined) return parseBooleanFlag(body.include_blacklisted_cfip) ? 1 : 0;
+    if (body.includeBlacklistedCfip !== undefined) return parseBooleanFlag(body.includeBlacklistedCfip) ? 1 : 0;
+    return defaultValue ? 1 : 0;
+}
+
+function hasIncludeBlacklistedCfipValue(body) {
+    return body.include_blacklisted_cfip !== undefined || body.includeBlacklistedCfip !== undefined;
+}
+
+async function resolveIncludeBlacklistedCfipValue(db, configId, body) {
+    if (hasIncludeBlacklistedCfipValue(body)) return getIncludeBlacklistedCfipValue(body);
+
+    const config = await db.prepare('SELECT include_blacklisted_cfip FROM subscribe_config WHERE id = ?')
+        .bind(configId).first();
+    return parseBooleanFlag(config?.include_blacklisted_cfip) ? 1 : 0;
+}
+
+function getCfipSubscribeCondition(includeBlacklistedCfip) {
+    return parseBooleanFlag(includeBlacklistedCfip) ? '1 = 1' : CFIP_SYNC_ALLOWED_CONDITION;
 }
 
 function parsePositiveInteger(value) {
@@ -961,15 +990,17 @@ async function handleGetArgoSubscribes(db) {
 }
 
 async function handleAddArgoSubscribe(request, db) {
-    const { template_link, remark, enabled = 1, sort_order = 0 } = await request.json();
+    const body = await request.json();
+    const { template_link, remark, enabled = 1, sort_order = 0 } = body;
+    const includeBlacklistedCfip = getIncludeBlacklistedCfipValue(body);
     if (!template_link) return json({ error: '模板链接不能为空' }, 400);
 
     // 生成随机token
     const token = generateRandomToken(32);
 
     const r = await db.prepare(
-        'INSERT INTO argo_subscribe (token, template_link, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
-    ).bind(token, template_link, remark, enabled, sort_order).run();
+        'INSERT INTO argo_subscribe (token, template_link, remark, enabled, sort_order, include_blacklisted_cfip, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+    ).bind(token, template_link, remark, enabled, sort_order, includeBlacklistedCfip).run();
 
     return json({ success: true, id: r.meta.last_row_id, token });
 }
@@ -982,6 +1013,7 @@ async function handleUpdateArgoSubscribe(request, db, id) {
     if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
     if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled); }
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
+    if (body.include_blacklisted_cfip !== undefined || body.includeBlacklistedCfip !== undefined) { sets.push('include_blacklisted_cfip = ?'); vals.push(getIncludeBlacklistedCfipValue(body)); }
 
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
@@ -1042,10 +1074,11 @@ async function handleBatchAddArgoSubscribe(request, db) {
             const remark = item.remark || '';
             const enabled = item.enabled !== undefined ? item.enabled : 1;
             const sort_order = item.sort_order || 0;
+            const include_blacklisted_cfip = getIncludeBlacklistedCfipValue(item);
 
             statements.push(
-                db.prepare('INSERT INTO argo_subscribe (token, template_link, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
-                    .bind(token, template_link, remark, enabled, sort_order)
+                db.prepare('INSERT INTO argo_subscribe (token, template_link, remark, enabled, sort_order, include_blacklisted_cfip, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+                    .bind(token, template_link, remark, enabled, sort_order, include_blacklisted_cfip)
             );
         }
 
@@ -1091,7 +1124,8 @@ async function handleArgoSubscribe(db, token, url) {
 
     // 使用 parseCfipStatusConditions 解析状态条件
     const conditions = parseCfipStatusConditions(cfipStatusParam);
-    const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`;
+    const cfipSubscribeCondition = getCfipSubscribeCondition(template.include_blacklisted_cfip);
+    const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) AND ${cfipSubscribeCondition} ORDER BY speed DESC, sort_order, id`;
 
     // 2. 获取符合条件的CFIP
     const { results: cfips } = await db.prepare(query).all();
@@ -1218,7 +1252,9 @@ async function handleGetSubscribeConfigs(db, type) {
 }
 
 async function handleAddSubscribeConfig(request, db) {
-    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0 } = await request.json();
+    const body = await request.json();
+    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0 } = body;
+    const includeBlacklistedCfip = getIncludeBlacklistedCfipValue(body);
 
     if (!type || !uuid || !snippetsDomain) {
         return json({ error: '类型、UUID/密码和域名不能为空' }, 400);
@@ -1238,8 +1274,8 @@ async function handleAddSubscribeConfig(request, db) {
     const token = generateToken();
 
     const r = await db.prepare(
-        'INSERT INTO subscribe_config (type, token, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
-    ).bind(type, token, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order).run();
+        'INSERT INTO subscribe_config (type, token, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, include_blacklisted_cfip, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+    ).bind(type, token, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order, includeBlacklistedCfip).run();
 
     return json({ success: true, data: { id: r.meta.last_row_id, token } });
 }
@@ -1258,6 +1294,7 @@ async function handleUpdateSubscribeConfig(request, db, id) {
     if (body.remark !== undefined) { sets.push('remark = ?'); vals.push(body.remark); }
     if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled ? 1 : 0); }
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
+    if (body.include_blacklisted_cfip !== undefined || body.includeBlacklistedCfip !== undefined) { sets.push('include_blacklisted_cfip = ?'); vals.push(getIncludeBlacklistedCfipValue(body)); }
 
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
@@ -1290,18 +1327,21 @@ async function handleGetSSConfig(db) {
     const config = await db.prepare('SELECT * FROM subscribe_config WHERE id = 2').first();
     if (config) {
         // 将 uuid 字段作为 password 返回
-        return json({ success: true, data: { password: config.uuid, snippets_domain: config.snippets_domain, proxy_path: config.proxy_path } });
+        return json({ success: true, data: { password: config.uuid, snippets_domain: config.snippets_domain, proxy_path: config.proxy_path, include_blacklisted_cfip: config.include_blacklisted_cfip || 0 } });
     }
     return json({ success: true, data: null });
 }
 
 // V<span>LESS</span> 订阅生成
 async function handleGenerateVlSubscribe(request, db) {
-    const { uuid, snippetsDomain, proxyPath = '/?ed=2560', status = 'enabled' } = await request.json();
+    const body = await request.json();
+    const { uuid, snippetsDomain, proxyPath = '/?ed=2560', status = 'enabled' } = body;
     if (!uuid || !snippetsDomain) return json({ error: 'UUID 和域名不能为空' }, 400);
 
     const domain = snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, updated_at) VALUES (1, ?, ?, ?, datetime("now"))').bind(uuid, domain, proxyPath).run();
+    const includeBlacklistedCfip = await resolveIncludeBlacklistedCfipValue(db, 1, body);
+    await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, include_blacklisted_cfip, updated_at) VALUES (1, ?, ?, ?, ?, datetime("now"))')
+        .bind(uuid, domain, proxyPath, includeBlacklistedCfip).run();
 
     // 支持多选状态，例如 status="enabled,death_reprieve" (旧参数) 或 "enabled,invalid"
     let statusList = status.split(',');
@@ -1334,7 +1374,7 @@ async function handleGenerateVlSubscribe(request, db) {
         conditions.push("status = 'enabled' OR status IS NULL");
     }
 
-    query += `(${conditions.join(' OR ')}) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`;
+    query += `(${conditions.join(' OR ')}) AND ${getCfipSubscribeCondition(includeBlacklistedCfip)} ORDER BY speed DESC, sort_order, id`;
 
     const { results: cfips } = await db.prepare(query).all();
     if (cfips.length === 0) return json({ error: '没有符合条件的 CFIP' }, 400);
@@ -1369,16 +1409,19 @@ async function handleGenerateVlSubscribe(request, db) {
 
 // SS 订阅生成
 async function handleGenerateSSSubscribe(request, db) {
-    const { password, snippetsDomain, proxyPath } = await request.json();
+    const body = await request.json();
+    const { password, snippetsDomain, proxyPath } = body;
     if (!password || !snippetsDomain) return json({ error: '密码和域名不能为空' }, 400);
 
     const domain = snippetsDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const finalPath = proxyPath || `/${password}`;
+    const includeBlacklistedCfip = await resolveIncludeBlacklistedCfipValue(db, 2, body);
 
     // 保存配置，使用 uuid 字段存储 password
-    await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, updated_at) VALUES (2, ?, ?, ?, datetime("now"))').bind(password, domain, finalPath).run();
+    await db.prepare('INSERT OR REPLACE INTO subscribe_config (id, uuid, snippets_domain, proxy_path, include_blacklisted_cfip, updated_at) VALUES (2, ?, ?, ?, ?, datetime("now"))')
+        .bind(password, domain, finalPath, includeBlacklistedCfip).run();
 
-    const { results: cfips } = await db.prepare(`SELECT * FROM cf_ips WHERE (status = 'enabled' OR status IS NULL) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`).all();
+    const { results: cfips } = await db.prepare(`SELECT * FROM cf_ips WHERE (status = 'enabled' OR status IS NULL) AND ${getCfipSubscribeCondition(includeBlacklistedCfip)} ORDER BY speed DESC, sort_order, id`).all();
     if (cfips.length === 0) return json({ error: '没有启用的 CFIP' }, 400);
 
     const method = 'none';
@@ -1455,15 +1498,16 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
 
     // 获取CFIP列表
     let cfips = [];
+    const cfipSubscribeCondition = getCfipSubscribeCondition(config.include_blacklisted_cfip);
     if (cfipIds.length > 0) {
-        // 指定了CFIP ID，获取指定的CFIP（不管启用状态，但黑名单始终排除）
+        // 指定了CFIP ID，获取指定的CFIP（不管启用状态）
         const placeholders = cfipIds.map(() => '?').join(',');
-        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
+        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) AND ${cfipSubscribeCondition} ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
         // 未指定CFIP ID，根据 cfipStatus 筛选
         const conditions = parseCfipStatusConditions(cfipStatusParam);
-        const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`;
+        const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) AND ${cfipSubscribeCondition} ORDER BY speed DESC, sort_order, id`;
         const { results } = await db.prepare(query).all();
         cfips = results;
     }
@@ -1602,15 +1646,16 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
 
     // 获取CFIP列表
     let cfips = [];
+    const cfipSubscribeCondition = getCfipSubscribeCondition(config.include_blacklisted_cfip);
     if (cfipIds.length > 0) {
-        // 指定了CFIP ID，获取指定的CFIP（不管启用状态，但黑名单始终排除）
+        // 指定了CFIP ID，获取指定的CFIP（不管启用状态）
         const placeholders = cfipIds.map(() => '?').join(',');
-        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
+        const { results } = await db.prepare(`SELECT * FROM cf_ips WHERE id IN (${placeholders}) AND ${cfipSubscribeCondition} ORDER BY speed DESC, sort_order, id`).bind(...cfipIds).all();
         cfips = results;
     } else {
         // 未指定CFIP ID，根据 cfipStatus 筛选
         const conditions = parseCfipStatusConditions(cfipStatusParam);
-        const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) AND ${CFIP_SYNC_ALLOWED_CONDITION} ORDER BY speed DESC, sort_order, id`;
+        const query = `SELECT * FROM cf_ips WHERE (${conditions.join(' OR ')}) AND ${cfipSubscribeCondition} ORDER BY speed DESC, sort_order, id`;
         const { results } = await db.prepare(query).all();
         cfips = results;
     }

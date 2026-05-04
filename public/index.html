@@ -898,7 +898,7 @@
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
                 <strong>💡 说明：</strong>ProxyIP(反代IP) 用于普通 IP/域名代理，不支持 SOCKS5/HTTP 协议。如需添加 SOCKS5/HTTP
                 代理，请使用"全局出站"功能。<br>
-                <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 未拉黑优选域名数量。<strong
+                <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 可参与订阅的优选域名数量。<strong
                     style="color:#f14668">不添加反代IP的话，不会生成原生节点。</strong>
             </div>
             <div id="proxyipListView">
@@ -1064,8 +1064,8 @@
             <div
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
                 <strong>💡 说明：</strong>CFIP(优选域名) 用于配置 Cloudflare 优选 IP 或域名，作为节点的连接地址。<br>
-                <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 未拉黑优选域名数量。<br>
-                <strong>同步黑名单：</strong>被拉黑的 CFIP 会保留在管理列表中，但不会参与 CF 同步和订阅生成。
+                <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 可参与订阅的优选域名数量。<br>
+                <strong>同步黑名单：</strong>被拉黑的 CFIP 会保留在管理列表中，不参与 CF 同步；是否参与订阅生成由订阅配置决定。
             </div>
             <div id="cfipListView">
                 <table class="table">
@@ -1127,7 +1127,7 @@
                 • <code>?outbound=1,2</code> - 指定全局出站的ID<br>
                 • <code>?cfip=1,2,3</code> - 指定CFIP的ID<br>
                 • <code>?proxyip=1&outbound=2&cfip=1,2</code> - 组合使用<br>
-                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；同步黑名单仍会被排除。
+                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；拉黑 CFIP 是否包含由订阅配置决定。
             </div>
 
             <div id="vlConfigList"></div>
@@ -1152,7 +1152,7 @@
                 • <code>?outbound=1,2</code> - 指定全局出站的ID<br>
                 • <code>?cfip=1,2,3</code> - 指定CFIP的ID<br>
                 • <code>?proxyip=1&outbound=2&cfip=1,2</code> - 组合使用<br>
-                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；同步黑名单仍会被排除。
+                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；拉黑 CFIP 是否包含由订阅配置决定。
             </div>
 
             <div id="ssConfigList"></div>
@@ -1170,10 +1170,10 @@
             <div
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
                 <strong>💡 说明：</strong><br>
-                1、ARGO 优选订阅用于管理 V<span>LESS</span>/V<span>Mess</span> 模板链接，系统会自动将模板中的"优选域名/IP:端口"替换为所有启用且未拉黑的
+                1、ARGO 优选订阅用于管理 V<span>LESS</span>/V<span>Mess</span> 模板链接，系统会自动将模板中的"优选域名/IP:端口"替换为当前设置允许参与订阅的
                 CFIP，生成多个优化节点。<br>
                 2、支持 V<span>LESS</span> 和 V<span>Mess</span> 两种协议。<br>
-                3、节点数量：每个模板会生成 N 个节点（N = 启用且未拉黑的 CFIP 数量）。
+                3、节点数量：每个模板会生成 N 个节点（N = 当前设置允许参与订阅的 CFIP 数量）。
             </div>
 
             <div id="argoConfigList"></div>
@@ -1498,6 +1498,7 @@
                 const subUrl = `${location.origin}/sub/token/${item.token}`;
                 const statusClass = item.enabled ? 'online' : 'offline';
                 const statusText = item.enabled ? '已启用' : '已禁用';
+                const includeBlacklisted = Number(item.include_blacklisted_cfip) === 1;
                 return `
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
 <div class="card-header">
@@ -1510,6 +1511,7 @@
 <div class="card-info">
 <div class="card-info-row"><strong>域名:</strong> ${item.snippets_domain}</div>
 <div class="card-info-row"><strong>路径:</strong> ${item.proxy_path || '/?ed=2560'}</div>
+<div class="card-info-row"><strong>拉黑CFIP:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
 <code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
@@ -1544,6 +1546,7 @@
                 const subUrl = `${location.origin}/sub/token/${item.token}`;
                 const statusClass = item.enabled ? 'online' : 'offline';
                 const statusText = item.enabled ? '已启用' : '已禁用';
+                const includeBlacklisted = Number(item.include_blacklisted_cfip) === 1;
                 return `
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
 <div class="card-header">
@@ -1556,6 +1559,7 @@
 <div class="card-info">
 <div class="card-info-row"><strong>域名:</strong> ${item.snippets_domain}</div>
 <div class="card-info-row"><strong>路径:</strong> ${item.proxy_path || '/' + item.uuid}</div>
+<div class="card-info-row"><strong>拉黑CFIP:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
 <code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
@@ -1591,6 +1595,7 @@
                 const statusClass = item.enabled ? 'online' : 'offline';
                 const statusText = item.enabled ? '已启用' : '已禁用';
                 const protocol = item.template_link.startsWith('vl' + 'ess://') ? 'V<span>LESS</span>' : (item.template_link.startsWith('vm' + 'ess://') ? 'V<span>Mess</span>' : '未知');
+                const includeBlacklisted = Number(item.include_blacklisted_cfip) === 1;
 
                 return `
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
@@ -1606,6 +1611,7 @@
 <span style="color:#999;min-width:60px">模板链接</span>
 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">${item.template_link}</span>
 </div>
+<div class="card-info-row"><strong>拉黑CFIP:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
 <code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
@@ -1616,6 +1622,7 @@
 <button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
 <button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
 <button class="btn btn-warning btn-sm" onclick="editArgo(${item.id})">✏️ 编辑</button>
+<button class="btn btn-${includeBlacklisted ? 'warning' : 'success'} btn-sm" onclick="toggleArgoIncludeBlacklisted(${item.id},${includeBlacklisted ? 0 : 1})">${includeBlacklisted ? '排除拉黑CFIP' : '包含拉黑CFIP'}</button>
 <button class="btn btn-info btn-sm" onclick="resetArgoToken(${item.id})">🔄 重置Token</button>
 <button class="btn btn-${item.enabled ? 'secondary' : 'success'} btn-sm" onclick="toggleArgoEnable(${item.id},${!item.enabled})">${item.enabled ? '禁用' : '启用'}</button>
 <button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">🗑️ 删除</button>
@@ -1635,6 +1642,11 @@
 
         async function toggleArgoEnable(id, enabled) {
             await api('/argo/' + id, 'PUT', { enabled: enabled ? 1 : 0 });
+            loadArgoSubscribes();
+        }
+
+        async function toggleArgoIncludeBlacklisted(id, includeBlacklistedCfip) {
+            await api('/argo/' + id, 'PUT', { includeBlacklistedCfip: includeBlacklistedCfip ? 1 : 0 });
             loadArgoSubscribes();
         }
 
@@ -2492,6 +2504,7 @@
                 const uuid = document.getElementById('subUuid').value.trim();
                 const domain = document.getElementById('subDomain').value.trim();
                 const remark = document.getElementById('subRemark').value.trim();
+                const includeBlacklistedCfip = document.getElementById('subIncludeBlacklisted').checked ? 1 : 0;
 
                 if (!uuid || !domain) return alert('请填写必填项');
 
@@ -2500,7 +2513,7 @@
                 // SS 默认 /uuid
                 const path = type === 'ss' ? '/' + uuid : '/?ed=2560';
 
-                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined };
+                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined, includeBlacklistedCfip };
                 const method = editId ? 'PUT' : 'POST';
                 const apiPath = editId ? `/subscribe/config/${editId}` : '/subscribe/config';
 
@@ -2571,12 +2584,14 @@
             modalType = 'subscribe';
             editId = null;
             document.getElementById('modalTitle').textContent = `添加订阅配置`;
-            const label = type === 'vl' ? 'UUID' : '密码';
+            const isVl = type === 'vl' || type === 'vl' + 'ess';
+            const label = isVl ? 'UUID' : '密码';
             document.getElementById('modalBody').innerHTML = `
-<input type="hidden" id="subscribeType" value="${type === 'vl' ? 'vl' + 'ess' : type}">
+<input type="hidden" id="subscribeType" value="${isVl ? 'vl' + 'ess' : type}">
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" placeholder="例如：美国节点"></div>
-<div class="form-group"><label>${label}</label><input type="text" id="subUuid" placeholder="${type === 'vl' ? '12cbf86b-22bb-45b6-aadb-cb622a538d6a' : 'your-password'}"></div>
+<div class="form-group"><label>${label}</label><input type="text" id="subUuid" placeholder="${isVl ? '12cbf86b-22bb-45b6-aadb-cb622a538d6a' : 'your-password'}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" placeholder="your-worker.workers.dev"></div>
+<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted"> 拉黑 CFIP 参与订阅生成</label>
 `;
             document.getElementById('addModal').classList.remove('hidden');
         }
@@ -2597,6 +2612,7 @@
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" value="${item.remark || ''}"></div>
 <div class="form-group"><label>${label}</label><input type="text" id="subUuid" value="${item.uuid}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" value="${item.snippets_domain}"></div>
+<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted" ${Number(item.include_blacklisted_cfip) === 1 ? 'checked' : ''}> 拉黑 CFIP 参与订阅生成</label>
 `;
             document.getElementById('addModal').classList.remove('hidden');
         }
@@ -3057,7 +3073,7 @@
                 const otherPromises = [
                     ...data.proxyips.map(item => api('/proxyip', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
                     ...data.outbounds.map(item => api('/outbound', 'POST', { address: item.address, remark: item.remark, enabled: item.enabled })),
-                    ...(data.argo || []).map(item => api('/argo', 'POST', { template_link: item.template_link, remark: item.remark, enabled: item.enabled }))
+                    ...(data.argo || []).map(item => api('/argo', 'POST', { template_link: item.template_link, remark: item.remark, enabled: item.enabled, include_blacklisted_cfip: item.include_blacklisted_cfip }))
                 ];
 
                 // Execute other types
@@ -3087,12 +3103,12 @@
 
                 // 更新 V<span>LESS</span> 配置
                 if (data.vlConfig && data.vlConfig.uuid) {
-                    await api('/subscribe/v' + 'less/generate', 'POST', { uuid: data.vlConfig.uuid, snippetsDomain: data.vlConfig.snippets_domain, proxyPath: data.vlConfig.proxy_path });
+                    await api('/subscribe/v' + 'less/generate', 'POST', { uuid: data.vlConfig.uuid, snippetsDomain: data.vlConfig.snippets_domain, proxyPath: data.vlConfig.proxy_path, include_blacklisted_cfip: data.vlConfig.include_blacklisted_cfip });
                 }
 
                 // 更新 SS 配置
                 if (data.ssConfig && data.ssConfig.password) {
-                    await api('/subscribe/ss/generate', 'POST', { password: data.ssConfig.password, snippetsDomain: data.ssConfig.snippets_domain, proxyPath: data.ssConfig.proxy_path });
+                    await api('/subscribe/ss/generate', 'POST', { password: data.ssConfig.password, snippetsDomain: data.ssConfig.snippets_domain, proxyPath: data.ssConfig.proxy_path, include_blacklisted_cfip: data.ssConfig.include_blacklisted_cfip });
                 }
 
                 // 兼容旧版本导出格式（config 字段）
