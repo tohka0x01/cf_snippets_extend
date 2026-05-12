@@ -7,6 +7,7 @@ const CORS = {
     'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Internal-Key',
 };
 const CFIP_SYNC_ALLOWED_CONDITION = '(sync_blacklisted = 0 OR sync_blacklisted IS NULL)';
+const CFIP_SUBSCRIBE_ALLOWED_CONDITION = '(node_blacklisted = 0 OR node_blacklisted IS NULL)';
 
 // 自动初始化数据库
 async function initDB(db) {
@@ -14,7 +15,7 @@ async function initDB(db) {
         CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY, api_key TEXT UNIQUE, expires_at TEXT, created_at TEXT);
         CREATE TABLE IF NOT EXISTS proxy_ips (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS outbounds (id INTEGER PRIMARY KEY, address TEXT, type TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, exit_country TEXT, exit_city TEXT, exit_ip TEXT, exit_org TEXT, checked_at TEXT, created_at TEXT, updated_at TEXT);
-        CREATE TABLE IF NOT EXISTS cf_ips (id INTEGER PRIMARY KEY, address TEXT, port INTEGER DEFAULT 443, remark TEXT, sort_order INTEGER DEFAULT 0, sync_blacklisted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS cf_ips (id INTEGER PRIMARY KEY, address TEXT, port INTEGER DEFAULT 443, remark TEXT, sort_order INTEGER DEFAULT 0, sync_blacklisted INTEGER DEFAULT 0, node_blacklisted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS subscribe_config (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, token TEXT UNIQUE NOT NULL, uuid TEXT, snippets_domain TEXT, proxy_path TEXT, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, include_blacklisted_cfip INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
         CREATE TABLE IF NOT EXISTS argo_subscribe (id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, template_link TEXT NOT NULL, remark TEXT, enabled INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, include_blacklisted_cfip INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
     `).catch(() => { });
@@ -43,6 +44,7 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE cf_ips ADD COLUMN fail_count INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE cf_ips ADD COLUMN status TEXT DEFAULT 'enabled'`).run().catch(() => { });
         await db.prepare(`ALTER TABLE cf_ips ADD COLUMN sync_blacklisted INTEGER DEFAULT 0`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE cf_ips ADD COLUMN node_blacklisted INTEGER DEFAULT 0`).run().catch(() => { });
     } catch (e) {
         // 忽略错误
     }
@@ -113,6 +115,52 @@ function getSyncBlacklistedValue(body, defaultValue = false) {
     return defaultValue ? 1 : 0;
 }
 
+function getNodeBlacklistedValue(body, defaultValue = false) {
+    if (body.node_blacklisted !== undefined) return parseBooleanFlag(body.node_blacklisted) ? 1 : 0;
+    if (body.nodeBlacklisted !== undefined) return parseBooleanFlag(body.nodeBlacklisted) ? 1 : 0;
+    return defaultValue ? 1 : 0;
+}
+
+function normalizeBlacklistType(value) {
+    if (value === undefined || value === null || value === '') return null;
+
+    const type = String(value).trim().toLowerCase();
+    if (['1', 'dns', 'sync', 'sync_blacklisted', 'dns_blacklist'].includes(type)) return 'dns';
+    if (['2', 'node', 'subscribe', 'node_blacklisted', 'node_blacklist'].includes(type)) return 'node';
+    return null;
+}
+
+function resolveBlacklistUpdate(body) {
+    const blacklistType = normalizeBlacklistType(body.blacklist_type ?? body.blacklistType ?? body.type);
+    if (blacklistType === 'dns') {
+        const value = body.sync_blacklisted !== undefined || body.blacklisted !== undefined
+            ? getSyncBlacklistedValue(body)
+            : (body.value !== undefined || body.enabled !== undefined)
+                ? (parseBooleanFlag(body.value ?? body.enabled) ? 1 : 0)
+                : null;
+        if (value === null) return null;
+        return { type: 'dns', field: 'sync_blacklisted', value };
+    }
+    if (blacklistType === 'node') {
+        const value = body.node_blacklisted !== undefined || body.nodeBlacklisted !== undefined
+            ? getNodeBlacklistedValue(body)
+            : (body.value !== undefined || body.enabled !== undefined || body.blacklisted !== undefined)
+                ? (parseBooleanFlag(body.value ?? body.enabled ?? body.blacklisted) ? 1 : 0)
+                : null;
+        if (value === null) return null;
+        return { type: 'node', field: 'node_blacklisted', value };
+    }
+
+    if (body.node_blacklisted !== undefined || body.nodeBlacklisted !== undefined) {
+        return { type: 'node', field: 'node_blacklisted', value: getNodeBlacklistedValue(body) };
+    }
+    if (body.sync_blacklisted !== undefined || body.blacklisted !== undefined) {
+        return { type: 'dns', field: 'sync_blacklisted', value: getSyncBlacklistedValue(body) };
+    }
+
+    return null;
+}
+
 function getIncludeBlacklistedCfipValue(body, defaultValue = false) {
     if (body.include_blacklisted_cfip !== undefined) return parseBooleanFlag(body.include_blacklisted_cfip) ? 1 : 0;
     if (body.includeBlacklistedCfip !== undefined) return parseBooleanFlag(body.includeBlacklistedCfip) ? 1 : 0;
@@ -132,7 +180,7 @@ async function resolveIncludeBlacklistedCfipValue(db, configId, body) {
 }
 
 function getCfipSubscribeCondition(includeBlacklistedCfip) {
-    return parseBooleanFlag(includeBlacklistedCfip) ? '1 = 1' : CFIP_SYNC_ALLOWED_CONDITION;
+    return parseBooleanFlag(includeBlacklistedCfip) ? '1 = 1' : CFIP_SUBSCRIBE_ALLOWED_CONDITION;
 }
 
 function getCfipSubscribeConditionFromParams(urlParams, configValue) {
@@ -742,15 +790,33 @@ async function handleAddCFIP(request, db) {
     const body = await request.json();
     const { address, port = 443, remark, name, sort_order = 0, latency, speed, country, isp, fail_count = 0, status = 'enabled' } = body;
     const syncBlacklisted = getSyncBlacklistedValue(body);
+    const nodeBlacklisted = getNodeBlacklistedValue(body);
     if (!address) return json({ error: '地址不能为空' }, 400);
 
     const max = await db.prepare('SELECT MAX(id) as m FROM cf_ips').first();
     const finalRemark = remark || `CFIP-${(max?.m || 0) + 1}`;
 
-    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, sync_blacklisted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
-        .bind(address, port, finalRemark, name || null, sort_order, latency || null, speed || null, country || null, isp || null, fail_count, status, syncBlacklisted).run();
+    const r = await db.prepare('INSERT INTO cf_ips (address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, sync_blacklisted, node_blacklisted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+        .bind(address, port, finalRemark, name || null, sort_order, latency || null, speed || null, country || null, isp || null, fail_count, status, syncBlacklisted, nodeBlacklisted).run();
 
-    return json({ success: true, data: { id: r.meta.last_row_id, address, port, remark: finalRemark, name, latency, speed, country, isp, fail_count, status, sync_blacklisted: syncBlacklisted } });
+    return json({
+        success: true,
+        data: {
+            id: r.meta.last_row_id,
+            address,
+            port,
+            remark: finalRemark,
+            name,
+            latency,
+            speed,
+            country,
+            isp,
+            fail_count,
+            status,
+            sync_blacklisted: syncBlacklisted,
+            node_blacklisted: nodeBlacklisted
+        }
+    });
 }
 
 async function handleBatchAddCFIP(request, db) {
@@ -801,10 +867,11 @@ async function handleBatchAddCFIP(request, db) {
             const fail_count = item.fail_count || 0;
             const status = item.status || 'enabled';
             const sync_blacklisted = getSyncBlacklistedValue(item);
+            const node_blacklisted = getNodeBlacklistedValue(item);
 
             statements.push(
-                db.prepare('INSERT INTO cf_ips (address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, sync_blacklisted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
-                    .bind(address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, sync_blacklisted)
+                db.prepare('INSERT INTO cf_ips (address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, sync_blacklisted, node_blacklisted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))')
+                    .bind(address, port, remark, name, sort_order, latency, speed, country, isp, fail_count, status, sync_blacklisted, node_blacklisted)
             );
         }
 
@@ -847,6 +914,7 @@ async function handleUpdateCFIP(request, db, id) {
     if (body.fail_count !== undefined) { sets.push('fail_count = ?'); vals.push(body.fail_count); }
     if (body.status !== undefined) { sets.push('status = ?'); vals.push(body.status); }
     if (body.sync_blacklisted !== undefined || body.blacklisted !== undefined) { sets.push('sync_blacklisted = ?'); vals.push(getSyncBlacklistedValue(body)); }
+    if (body.node_blacklisted !== undefined || body.nodeBlacklisted !== undefined) { sets.push('node_blacklisted = ?'); vals.push(getNodeBlacklistedValue(body)); }
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
     sets.push('updated_at = datetime("now")');
@@ -886,18 +954,19 @@ async function handleSetCFIPBlacklist(request, db, id) {
     if (!cfipId) return json({ error: 'ID无效' }, 400);
 
     const body = await request.json();
-    if (body.sync_blacklisted === undefined && body.blacklisted === undefined) {
-        return json({ error: 'sync_blacklisted不能为空' }, 400);
+    const blacklistUpdate = resolveBlacklistUpdate(body);
+    if (!blacklistUpdate) {
+        return json({ error: '黑名单类型或值不能为空' }, 400);
     }
 
-    const syncBlacklisted = getSyncBlacklistedValue(body);
-    const result = await db.prepare('UPDATE cf_ips SET sync_blacklisted = ?, updated_at = datetime("now") WHERE id = ?')
-        .bind(syncBlacklisted, cfipId).run();
+    const result = await db.prepare(`UPDATE cf_ips SET ${blacklistUpdate.field} = ?, updated_at = datetime("now") WHERE id = ?`)
+        .bind(blacklistUpdate.value, cfipId).run();
     return json({
         success: true,
         data: {
             id: cfipId,
-            sync_blacklisted: syncBlacklisted,
+            blacklist_type: blacklistUpdate.type,
+            [blacklistUpdate.field]: blacklistUpdate.value,
             changes: result.meta?.changes ?? 0
         }
     });
@@ -907,20 +976,21 @@ async function handleBatchBlacklistCFIP(request, db) {
     const body = await request.json();
     const ids = parseIdList(body.ids);
     if (!ids) return json({ error: 'IDs必须是非重复的正整数数组' }, 400);
-    if (body.sync_blacklisted === undefined && body.blacklisted === undefined) {
-        return json({ error: 'sync_blacklisted不能为空' }, 400);
+    const blacklistUpdate = resolveBlacklistUpdate(body);
+    if (!blacklistUpdate) {
+        return json({ error: '黑名单类型或值不能为空' }, 400);
     }
 
-    const syncBlacklisted = getSyncBlacklistedValue(body);
     const placeholders = ids.map(() => '?').join(',');
-    const result = await db.prepare(`UPDATE cf_ips SET sync_blacklisted = ?, updated_at = datetime("now") WHERE id IN (${placeholders})`)
-        .bind(syncBlacklisted, ...ids).run();
+    const result = await db.prepare(`UPDATE cf_ips SET ${blacklistUpdate.field} = ?, updated_at = datetime("now") WHERE id IN (${placeholders})`)
+        .bind(blacklistUpdate.value, ...ids).run();
     return json({
         success: true,
         data: {
             requested: ids.length,
             changes: result.meta?.changes ?? 0,
-            sync_blacklisted: syncBlacklisted
+            blacklist_type: blacklistUpdate.type,
+            [blacklistUpdate.field]: blacklistUpdate.value
         }
     });
 }
@@ -959,6 +1029,10 @@ async function handleBatchUpdateCFIP(request, db) {
             if (item.sync_blacklisted !== undefined || item.blacklisted !== undefined) {
                 sets.push('sync_blacklisted = ?');
                 vals.push(getSyncBlacklistedValue(item));
+            }
+            if (item.node_blacklisted !== undefined || item.nodeBlacklisted !== undefined) {
+                sets.push('node_blacklisted = ?');
+                vals.push(getNodeBlacklistedValue(item));
             }
 
             if (sets.length === 0) {
@@ -2557,7 +2631,7 @@ async function handleTelegramImportCFIP(request, db) {
 
         // 插入数据
         const result = await db.prepare(
-            'INSERT INTO cf_ips (address, port, remark, status, sync_blacklisted, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, datetime("now"), datetime("now"))'
+            'INSERT INTO cf_ips (address, port, remark, status, sync_blacklisted, node_blacklisted, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 0, ?, datetime("now"), datetime("now"))'
         ).bind(address, port, remark || address, 'enabled', sortOrder).run();
 
         return json({
@@ -2568,7 +2642,8 @@ async function handleTelegramImportCFIP(request, db) {
                 port,
                 remark: remark || address,
                 status: 'enabled',
-                sync_blacklisted: 0
+                sync_blacklisted: 0,
+                node_blacklisted: 0
             }
         });
     } catch (error) {

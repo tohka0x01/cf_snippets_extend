@@ -1,6 +1,6 @@
 # CFIP API 接口文档
 
-本文档面向自动化脚本和 AI 读取，描述 CFIP（优选 IP/域名）的管理、同步黑名单和 CF 同步读取接口。
+本文档面向自动化脚本和 AI 读取，描述 CFIP（优选 IP/域名）的管理、DNS/节点黑名单和 CF 同步读取接口。
 
 ## 通用约定
 
@@ -27,21 +27,22 @@
 | `isp` | string | 运营商 |
 | `fail_count` | number | 失败次数 |
 | `status` | string | `enabled`、`disabled`、`invalid` |
-| `sync_blacklisted` | number | CF 同步黑名单，`1` 表示已拉黑，`0` 表示允许同步 |
+| `sync_blacklisted` | number | DNS 黑名单，`1` 表示已拉黑，`0` 表示允许参与 CF/DNS 同步 |
+| `node_blacklisted` | number | 节点黑名单，`1` 表示已拉黑，`0` 表示允许参与订阅生成 |
 
 ## 黑名单规则
 
 - `sync_blacklisted = 1` 的 CFIP 会保留在管理接口 `/api/cfip` 中。
-- `sync_blacklisted = 1` 的 CFIP 不会从 `/api/internal/cfip` 返回。
-- 公开订阅和订阅生成接口默认排除 `sync_blacklisted = 1` 的 CFIP。
-- 如果对应订阅配置开启 `include_blacklisted_cfip = 1`，被拉黑的 CFIP 可以参与订阅生成。
-- `status` 和 `sync_blacklisted` 是独立字段：禁用/失效控制状态筛选，黑名单始终控制 CF 同步；订阅是否包含黑名单由订阅配置控制。
+- `sync_blacklisted = 1` 的 CFIP 不会从 `/api/internal/cfip` 返回，供 DNS/CF 同步时自动顺延下一条可用记录。
+- `node_blacklisted = 1` 的 CFIP 默认不会参与公开订阅和订阅生成接口。
+- 如果对应订阅配置开启 `include_blacklisted_cfip = 1`，节点黑名单中的 CFIP 可以参与订阅生成。
+- `status`、`sync_blacklisted`、`node_blacklisted` 三者独立：禁用/失效控制状态筛选，DNS 黑名单只控制同步，节点黑名单只控制订阅输出。
 
 ## 订阅配置黑名单字段
 
 | 字段 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `include_blacklisted_cfip` | number | `1` 表示该订阅生成时包含已拉黑 CFIP，`0` 表示排除，默认 `0` |
+| `include_blacklisted_cfip` | number | `1` 表示该订阅生成时包含节点黑名单 CFIP，`0` 表示排除，默认 `0` |
 
 该字段适用于：
 
@@ -82,7 +83,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
       "remark": "美国优选",
       "name": "US-1",
       "status": "enabled",
-      "sync_blacklisted": 0
+      "sync_blacklisted": 0,
+      "node_blacklisted": 0
     }
   ]
 }
@@ -102,6 +104,7 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
   "name": "US-1",
   "status": "enabled",
   "sync_blacklisted": 0,
+  "node_blacklisted": 0,
   "sort_order": 1,
   "latency": 150,
   "speed": 5000,
@@ -121,7 +124,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 {
   "latency": 145,
   "speed": 6000,
-  "sync_blacklisted": 1
+  "sync_blacklisted": 1,
+  "node_blacklisted": 0
 }
 ```
 
@@ -137,13 +141,13 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 拉黑：
 
 ```json
-{ "sync_blacklisted": 1 }
+{ "blacklist_type": "dns", "value": 1 }
 ```
 
 解黑：
 
 ```json
-{ "sync_blacklisted": 0 }
+{ "blacklist_type": "node", "value": 0 }
 ```
 
 响应：
@@ -153,6 +157,7 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
   "success": true,
   "data": {
     "id": 12,
+    "blacklist_type": "dns",
     "sync_blacklisted": 1,
     "changes": 1
   }
@@ -160,6 +165,11 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 ```
 
 如果 `{id}` 不存在，接口仍返回 `success: true`，但 `data.changes` 为 `0`。
+
+兼容写法：
+
+- DNS 黑名单可继续传 `sync_blacklisted` 或旧别名 `blacklisted`
+- 节点黑名单可传 `node_blacklisted`
 
 ## 批量拉黑/解黑
 
@@ -171,7 +181,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 ```json
 {
   "ids": [1, 2, 3],
-  "sync_blacklisted": 1
+  "blacklist_type": "node",
+  "value": 1
 }
 ```
 
@@ -183,7 +194,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
   "data": {
     "requested": 3,
     "changes": 3,
-    "sync_blacklisted": 1
+    "blacklist_type": "node",
+    "node_blacklisted": 1
   }
 }
 ```
@@ -218,7 +230,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
     "remark": "美国优选",
     "name": "US-1",
     "status": "enabled",
-    "sync_blacklisted": 0
+    "sync_blacklisted": 0,
+    "node_blacklisted": 0
   }
 ]
 ```
@@ -235,7 +248,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
       "id": 1,
       "latency": 120,
       "speed": 7000,
-      "sync_blacklisted": 0
+      "sync_blacklisted": 0,
+      "node_blacklisted": 0
     }
   ]
 }
@@ -258,7 +272,8 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
       "address": "104.16.123.123",
       "port": 443,
       "status": "enabled",
-      "sync_blacklisted": 0
+      "sync_blacklisted": 0,
+      "node_blacklisted": 0
     }
   ]
 }
@@ -266,7 +281,7 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 
 ## 订阅相关黑名单行为
 
-以下入口默认排除 `sync_blacklisted = 1` 的 CFIP；如果对应订阅配置开启 `include_blacklisted_cfip = 1`，则订阅生成会包含已拉黑 CFIP：
+以下入口默认排除 `node_blacklisted = 1` 的 CFIP；如果对应订阅配置开启 `include_blacklisted_cfip = 1`，则订阅生成会包含节点黑名单 CFIP：
 
 - `/sub/token/{token}`
 - `/sub/{uuid}`
@@ -275,7 +290,7 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 - `/api/subscribe/vless/generate`
 - `/api/subscribe/ss/generate`
 
-`/api/internal/cfip` 不受该设置影响，始终排除已拉黑 CFIP。
+`/api/internal/cfip` 不受该设置影响，始终只排除 DNS 黑名单中的 CFIP。
 
 `cfipStatus` 仍用于状态筛选：
 
@@ -283,13 +298,13 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 /sub/{uuid}?cfipStatus=enabled,invalid
 ```
 
-显式指定 CFIP ID 时，状态不强制检查；黑名单是否生效由订阅配置的 `include_blacklisted_cfip` 决定：
+显式指定 CFIP ID 时，状态不强制检查；节点黑名单是否生效由订阅配置的 `include_blacklisted_cfip` 决定：
 
 ```text
 /sub/{uuid}?cfip=1,2,3
 ```
 
-需要临时包含已拉黑 CFIP 时，可在公开订阅 URL 添加：
+需要临时包含节点黑名单 CFIP 时，可在公开订阅 URL 添加：
 
 ```text
 /sub/{uuid}?cfip=1,2,3&include_blacklisted_cfip=1

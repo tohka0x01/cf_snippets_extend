@@ -978,8 +978,10 @@
                         <option value="invalid">失效</option>
                     </select>
                     <button class="btn btn-info btn-sm" data-icon="✓" onclick="batchSetStatus('cfip')">设置状态</button>
-                    <button class="btn btn-danger btn-sm" onclick="batchSetBlacklist('cfip',true)">拉黑</button>
-                    <button class="btn btn-success btn-sm" onclick="batchSetBlacklist('cfip',false)">解黑</button>
+                    <button class="btn btn-danger btn-sm" onclick="batchSetBlacklist('cfip','dns',true)">DNS拉黑</button>
+                    <button class="btn btn-success btn-sm" onclick="batchSetBlacklist('cfip','dns',false)">DNS解黑</button>
+                    <button class="btn btn-danger btn-sm" onclick="batchSetBlacklist('cfip','node',true)">节点拉黑</button>
+                    <button class="btn btn-success btn-sm" onclick="batchSetBlacklist('cfip','node',false)">节点解黑</button>
                     <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
                     <div style="position:relative">
                         <button class="btn btn-sm" style="background:#f0f0f0;border:1px solid #ddd"
@@ -1048,7 +1050,7 @@
                 </div>
                 <div
                     style="display:flex;align-items:center;gap:12px;font-size:13px;color:#666;border-left:1px solid #e1e8ed;padding-left:12px">
-                    <span>CF同步:</span>
+                    <span>DNS同步:</span>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
                             value="sync_all" checked onchange="handleCFIPSyncChange(event)"> 全选</label>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
@@ -1056,7 +1058,19 @@
                         可同步</label>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
                             class="cfip-sync-check" value="blacklisted" checked onchange="handleCFIPSyncChange(event)">
-                        已拉黑</label>
+                        DNS拉黑</label>
+                </div>
+                <div
+                    style="display:flex;align-items:center;gap:12px;font-size:13px;color:#666;border-left:1px solid #e1e8ed;padding-left:12px">
+                    <span>订阅节点:</span>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            value="node_all" checked onchange="handleCFIPNodeChange(event)"> 全选</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            class="cfip-node-check" value="allowed" checked onchange="handleCFIPNodeChange(event)">
+                        可订阅</label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox"
+                            class="cfip-node-check" value="blacklisted" checked onchange="handleCFIPNodeChange(event)">
+                        节点拉黑</label>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666">
                     每页显示:
@@ -1077,7 +1091,8 @@
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
                 <strong>💡 说明：</strong>CFIP(优选域名) 用于配置 Cloudflare 优选 IP 或域名，作为节点的连接地址。<br>
                 <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 可参与订阅的优选域名数量。<br>
-                <strong>同步黑名单：</strong>被拉黑的 CFIP 会保留在管理列表中，不参与 CF 同步；是否参与订阅生成由订阅配置决定。
+                <strong>DNS 黑名单：</strong>被拉黑的 CFIP 会保留在管理列表中，不参与 DNS/CF 同步，内部同步读取会自动顺延下一条可用记录。<br>
+                <strong>节点黑名单：</strong>被拉黑的 CFIP 不参与订阅生成；是否临时包含由订阅配置中的“节点黑名单 CFIP 参与订阅生成”控制。
             </div>
             <div id="cfipListView">
                 <table class="table">
@@ -1102,8 +1117,10 @@
                                 <span id="sort-icon-speed"></span>
                             </th>
                             <th>状态</th>
-                            <th class="sort-header" onclick="handleCFIPSort('sync_blacklisted')">CF同步 <span
+                            <th class="sort-header" onclick="handleCFIPSort('sync_blacklisted')">DNS黑名单 <span
                                     id="sort-icon-sync_blacklisted"></span></th>
+                            <th class="sort-header" onclick="handleCFIPSort('node_blacklisted')">节点黑名单 <span
+                                    id="sort-icon-node_blacklisted"></span></th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -1139,7 +1156,7 @@
                 • <code>?outbound=1,2</code> - 指定全局出站的ID<br>
                 • <code>?cfip=1,2,3</code> - 指定CFIP的ID<br>
                 • <code>?proxyip=1&outbound=2&cfip=1,2</code> - 组合使用<br>
-                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；拉黑 CFIP 是否包含由订阅配置决定。
+                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；节点黑名单 CFIP 是否包含由订阅配置决定。
             </div>
 
             <div id="vlConfigList"></div>
@@ -1164,7 +1181,7 @@
                 • <code>?outbound=1,2</code> - 指定全局出站的ID<br>
                 • <code>?cfip=1,2,3</code> - 指定CFIP的ID<br>
                 • <code>?proxyip=1&outbound=2&cfip=1,2</code> - 组合使用<br>
-                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；拉黑 CFIP 是否包含由订阅配置决定。
+                <strong style="color:#d9534f">⚠️ 指定ID时不检查启用状态</strong>，即使被禁用也会包含在订阅中；节点黑名单 CFIP 是否包含由订阅配置决定。
             </div>
 
             <div id="ssConfigList"></div>
@@ -1308,6 +1325,18 @@
                     if (Array.isArray(parsed)) return parsed;
                 } catch (e) {
                     console.error('Failed to parse cfipSyncFilter from localStorage', e);
+                }
+            }
+            return ['allowed', 'blacklisted'];
+        })();
+        let cfipNodeFilter = (function () {
+            const saved = localStorage.getItem('cfipNodeFilter');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) return parsed;
+                } catch (e) {
+                    console.error('Failed to parse cfipNodeFilter from localStorage', e);
                 }
             }
             return ['allowed', 'blacklisted'];
@@ -1535,7 +1564,7 @@
 <div class="card-info">
 <div class="card-info-row"><strong>域名:</strong> ${item.snippets_domain}</div>
 <div class="card-info-row"><strong>路径:</strong> ${item.proxy_path || '/?ed=2560'}</div>
-<div class="card-info-row"><strong>拉黑CFIP:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
+<div class="card-info-row"><strong>节点黑名单:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
 <code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
@@ -1583,7 +1612,7 @@
 <div class="card-info">
 <div class="card-info-row"><strong>域名:</strong> ${item.snippets_domain}</div>
 <div class="card-info-row"><strong>路径:</strong> ${item.proxy_path || '/' + item.uuid}</div>
-<div class="card-info-row"><strong>拉黑CFIP:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
+<div class="card-info-row"><strong>节点黑名单:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
 <code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
@@ -1635,7 +1664,7 @@
 <span style="color:#999;min-width:60px">模板链接</span>
 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:11px">${item.template_link}</span>
 </div>
-<div class="card-info-row"><strong>拉黑CFIP:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
+<div class="card-info-row"><strong>节点黑名单:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
 <code style="font-size:11px;word-break:break-all;display:block;margin-top:4px;padding:6px;background:#f5f5f5;border-radius:4px">${subUrl}</code>
@@ -1646,7 +1675,7 @@
 <button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
 <button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
 <button class="btn btn-warning btn-sm" onclick="editArgo(${item.id})">✏️ 编辑</button>
-<button class="btn btn-${includeBlacklisted ? 'warning' : 'success'} btn-sm" onclick="toggleArgoIncludeBlacklisted(${item.id},${includeBlacklisted ? 0 : 1})">${includeBlacklisted ? '排除拉黑CFIP' : '包含拉黑CFIP'}</button>
+<button class="btn btn-${includeBlacklisted ? 'warning' : 'success'} btn-sm" onclick="toggleArgoIncludeBlacklisted(${item.id},${includeBlacklisted ? 0 : 1})">${includeBlacklisted ? '排除节点黑名单' : '包含节点黑名单'}</button>
 <button class="btn btn-info btn-sm" onclick="resetArgoToken(${item.id})">🔄 重置Token</button>
 <button class="btn btn-${item.enabled ? 'secondary' : 'success'} btn-sm" onclick="toggleArgoEnable(${item.id},${!item.enabled})">${item.enabled ? '禁用' : '启用'}</button>
 <button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">🗑️ 删除</button>
@@ -1850,6 +1879,7 @@
                 renderCFIPs();
                 initCFIPStatusCheckboxes(); // 初始化checkbox状态
                 initCFIPSyncCheckboxes();
+                initCFIPNodeCheckboxes();
             }
         }
 
@@ -1882,6 +1912,16 @@
             if (allCheck) allCheck.checked = cfipSyncFilter.length === 2;
         }
 
+        function initCFIPNodeCheckboxes() {
+            const allowedCheck = document.querySelector('input.cfip-node-check[value="allowed"]');
+            const blacklistedCheck = document.querySelector('input.cfip-node-check[value="blacklisted"]');
+            const allCheck = document.querySelector('input[value="node_all"]');
+
+            if (allowedCheck) allowedCheck.checked = cfipNodeFilter.includes('allowed');
+            if (blacklistedCheck) blacklistedCheck.checked = cfipNodeFilter.includes('blacklisted');
+            if (allCheck) allCheck.checked = cfipNodeFilter.length === 2;
+        }
+
         function renderCFIPs() {
             if (!cachedCFIPs) return;
 
@@ -1894,7 +1934,7 @@
                     let valA = a[cfipSortColumn];
                     let valB = b[cfipSortColumn];
 
-                    if (cfipSortColumn === 'id' || cfipSortColumn === 'port' || cfipSortColumn === 'fail_count' || cfipSortColumn === 'speed' || cfipSortColumn === 'latency' || cfipSortColumn === 'sync_blacklisted') {
+                    if (cfipSortColumn === 'id' || cfipSortColumn === 'port' || cfipSortColumn === 'fail_count' || cfipSortColumn === 'speed' || cfipSortColumn === 'latency' || cfipSortColumn === 'sync_blacklisted' || cfipSortColumn === 'node_blacklisted') {
                         valA = parseFloat(valA) || 0;
                         valB = parseFloat(valB) || 0;
                     } else {
@@ -1924,6 +1964,13 @@
                 });
             }
 
+            if (cfipNodeFilter.length < 2) {
+                filteredData = filteredData.filter(item => {
+                    const nodeStatus = Number(item.node_blacklisted) === 1 ? 'blacklisted' : 'allowed';
+                    return cfipNodeFilter.includes(nodeStatus);
+                });
+            }
+
             if (cfipSearchText) {
                 filteredData = filteredData.filter(item => {
                     const searchStr = (item.address + ' ' + item.port + ' ' + (item.remark || '') + ' ' + (item.name || '')).toLowerCase();
@@ -1944,9 +1991,12 @@
                     if (status === 'enabled') statusColor = '#48c774';
                     else if (status === 'disabled') statusColor = '#b5b5b5';
                     else if (status === 'invalid') statusColor = '#f14668';
-                    const isBlacklisted = Number(i.sync_blacklisted) === 1;
-                    const syncText = isBlacklisted ? '已拉黑' : '可同步';
-                    const syncBadgeClass = isBlacklisted ? 'danger' : 'success';
+                    const dnsBlacklisted = Number(i.sync_blacklisted) === 1;
+                    const nodeBlacklisted = Number(i.node_blacklisted) === 1;
+                    const syncText = dnsBlacklisted ? '已拉黑' : '可同步';
+                    const syncBadgeClass = dnsBlacklisted ? 'danger' : 'success';
+                    const nodeText = nodeBlacklisted ? '已拉黑' : '可订阅';
+                    const nodeBadgeClass = nodeBlacklisted ? 'danger' : 'success';
 
                     return `<tr>
 <td><input type="checkbox" class="cfip-check" value="${i.id}"></td>
@@ -1966,9 +2016,11 @@
     </select>
 </td>
 <td><span class="badge badge-${syncBadgeClass}">${syncText}</span></td>
+<td><span class="badge badge-${nodeBadgeClass}">${nodeText}</span></td>
 <td class="actions">
 <button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}', '${(i.remark || '').replace(/'/g, "\\\\'")}', ${i.port}, '${(i.name || '').replace(/'/g, "\\\\'")}')">✏️ 编辑</button>
-<button class="btn btn-${isBlacklisted ? 'success' : 'danger'} btn-sm" onclick="toggleCFIPBlacklist(${i.id},${isBlacklisted ? 0 : 1})">${isBlacklisted ? '解黑' : '拉黑'}</button>
+<button class="btn btn-${dnsBlacklisted ? 'success' : 'danger'} btn-sm" onclick="toggleCFIPBlacklist(${i.id},'dns',${dnsBlacklisted ? 0 : 1})">${dnsBlacklisted ? 'DNS解黑' : 'DNS拉黑'}</button>
+<button class="btn btn-${nodeBlacklisted ? 'success' : 'danger'} btn-sm" onclick="toggleCFIPBlacklist(${i.id},'node',${nodeBlacklisted ? 0 : 1})">${nodeBlacklisted ? '节点解黑' : '节点拉黑'}</button>
 </td></tr>`;
                 }).join('');
                 document.getElementById('cfipCheckAll').checked = false;
@@ -1977,8 +2029,10 @@
                 document.getElementById('cfipCardView').innerHTML = pageData.map(i => {
                     const status = i.status || 'enabled';
                     const statusClass = status === 'enabled' ? 'online' : (status === 'invalid' ? 'bad' : 'offline');
-                    const isBlacklisted = Number(i.sync_blacklisted) === 1;
-                    const syncText = isBlacklisted ? '已拉黑' : '可同步';
+                    const dnsBlacklisted = Number(i.sync_blacklisted) === 1;
+                    const nodeBlacklisted = Number(i.node_blacklisted) === 1;
+                    const syncText = dnsBlacklisted ? '已拉黑' : '可同步';
+                    const nodeText = nodeBlacklisted ? '已拉黑' : '可订阅';
 
                     return `<div class="outbound-card ${statusClass}" id="cfip-card-${i.id}">
 <input type="checkbox" class="card-checkbox cfip-check" value="${i.id}">
@@ -1997,13 +2051,17 @@
 <span style="margin-left:8px">状态: ${status}</span>
 </div>
 <div class="card-info-row" style="margin-top:4px;font-size:11px;color:#666">
-<span>CF同步: ${syncText}</span>
+<span>DNS同步: ${syncText}</span>
+</div>
+<div class="card-info-row" style="margin-top:4px;font-size:11px;color:#666">
+<span>订阅节点: ${nodeText}</span>
 </div>
 </div>
 <div class="card-actions">
 <div style="flex:1"></div>
 <span onclick="editItem('cfip',${i.id},'${i.address.replace(/'/g, "\\\\'")}','${(i.remark || '').replace(/'/g, "\\\\'")}',${i.port},'${(i.name || '').replace(/'/g, "\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
-<button class="btn btn-${isBlacklisted ? 'success' : 'danger'} btn-sm" onclick="toggleCFIPBlacklist(${i.id},${isBlacklisted ? 0 : 1})">${isBlacklisted ? '解黑' : '拉黑'}</button>
+<button class="btn btn-${dnsBlacklisted ? 'success' : 'danger'} btn-sm" onclick="toggleCFIPBlacklist(${i.id},'dns',${dnsBlacklisted ? 0 : 1})">${dnsBlacklisted ? 'DNS解黑' : 'DNS拉黑'}</button>
+<button class="btn btn-${nodeBlacklisted ? 'success' : 'danger'} btn-sm" onclick="toggleCFIPBlacklist(${i.id},'node',${nodeBlacklisted ? 0 : 1})">${nodeBlacklisted ? '节点解黑' : '节点拉黑'}</button>
 </div>
 </div>`;
                 }).join('');
@@ -2042,7 +2100,7 @@
         }
 
         function updateSortIcons() {
-            const columns = ['id', 'name', 'remark', 'address', 'port', 'fail_count', 'latency', 'speed', 'sync_blacklisted'];
+            const columns = ['id', 'name', 'remark', 'address', 'port', 'fail_count', 'latency', 'speed', 'sync_blacklisted', 'node_blacklisted'];
             columns.forEach(col => {
                 const icon = document.getElementById('sort-icon-' + col);
                 if (icon) {
@@ -2115,6 +2173,31 @@
             }
             cfipCurrentPage = 1;
             localStorage.setItem('cfipSyncFilter', JSON.stringify(cfipSyncFilter));
+            renderCFIPs();
+        }
+
+        function handleCFIPNodeChange(e) {
+            const val = e.target.value;
+            const isChecked = e.target.checked;
+
+            if (val === 'node_all') {
+                const checks = document.querySelectorAll('.cfip-node-check');
+                checks.forEach(c => c.checked = isChecked);
+                cfipNodeFilter = isChecked ? ['allowed', 'blacklisted'] : [];
+            } else {
+                if (isChecked) {
+                    if (!cfipNodeFilter.includes(val)) cfipNodeFilter.push(val);
+                } else {
+                    cfipNodeFilter = cfipNodeFilter.filter(s => s !== val);
+                }
+
+                const allCheck = document.querySelector('input[value="node_all"]');
+                const checks = document.querySelectorAll('.cfip-node-check');
+                const allChecked = Array.from(checks).every(c => c.checked);
+                if (allCheck) allCheck.checked = allChecked;
+            }
+            cfipCurrentPage = 1;
+            localStorage.setItem('cfipNodeFilter', JSON.stringify(cfipNodeFilter));
             renderCFIPs();
         }
 
@@ -2497,10 +2580,11 @@
             }
         }
 
-        async function toggleCFIPBlacklist(id, syncBlacklisted) {
+        async function toggleCFIPBlacklist(id, blacklistType, blacklisted) {
             showLoading();
             try {
-                const d = await api('/cfip/' + id + '/blacklist', 'POST', { sync_blacklisted: syncBlacklisted ? 1 : 0 });
+                const body = { blacklist_type: blacklistType, value: blacklisted ? 1 : 0 };
+                const d = await api('/cfip/' + id + '/blacklist', 'POST', body);
                 if (!d.success) {
                     alert(d.error || '操作失败');
                     return;
@@ -2659,7 +2743,7 @@
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" placeholder="例如：美国节点"></div>
 <div class="form-group"><label>${label}</label><input type="text" id="subUuid" placeholder="${isVl ? '12cbf86b-22bb-45b6-aadb-cb622a538d6a' : 'your-password'}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" placeholder="your-worker.workers.dev"></div>
-<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted"> 拉黑 CFIP 参与订阅生成</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted"> 节点黑名单 CFIP 参与订阅生成</label>
 `;
             document.getElementById('addModal').classList.remove('hidden');
         }
@@ -2680,7 +2764,7 @@
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" value="${item.remark || ''}"></div>
 <div class="form-group"><label>${label}</label><input type="text" id="subUuid" value="${item.uuid}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" value="${item.snippets_domain}"></div>
-<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted" ${Number(item.include_blacklisted_cfip) === 1 ? 'checked' : ''}> 拉黑 CFIP 参与订阅生成</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted" ${Number(item.include_blacklisted_cfip) === 1 ? 'checked' : ''}> 节点黑名单 CFIP 参与订阅生成</label>
 `;
             document.getElementById('addModal').classList.remove('hidden');
         }
@@ -3029,7 +3113,7 @@
                     api('/subscribe/ss/config')
                 ]);
                 const exportData = {
-                    version: '1.1',
+                    version: '1.2',
                     timestamp: new Date().toISOString(),
                     proxyips: proxyips.success ? proxyips.data : [],
                     outbounds: outbounds.success ? outbounds.data : [],
@@ -3160,6 +3244,7 @@
                         fail_count: item.fail_count,
                         status: item.status || 'enabled',
                         sync_blacklisted: item.sync_blacklisted !== undefined ? item.sync_blacklisted : item.blacklisted,
+                        node_blacklisted: item.node_blacklisted !== undefined ? item.node_blacklisted : item.nodeBlacklisted,
                         // Optional fields might be needed if export includes them
                         latency: item.latency,
                         speed: item.speed,
@@ -3418,7 +3503,7 @@
             else await loadCFIPs();
         }
 
-        async function batchSetBlacklist(type, syncBlacklisted) {
+        async function batchSetBlacklist(type, blacklistType, blacklisted) {
             if (type !== 'cfip') return;
             const checks = Array.from(document.querySelectorAll('.cfip-check:checked')).filter(cb => {
                 let el = cb;
@@ -3430,13 +3515,14 @@
             });
             if (checks.length === 0) return alert('请先选择要修改的 CFIP');
 
-            const actionText = syncBlacklisted ? '拉黑' : '解黑';
+            const typeText = blacklistType === 'node' ? '节点' : 'DNS';
+            const actionText = blacklisted ? `${typeText}拉黑` : `${typeText}解黑`;
             if (!confirm(`确定${actionText}选中的 ${checks.length} 项？`)) return;
 
             const ids = checks.map(cb => parseInt(cb.value));
             showLoading();
             try {
-                const d = await api('/cfip/batch/blacklist', 'POST', { ids, sync_blacklisted: syncBlacklisted ? 1 : 0 });
+                const d = await api('/cfip/batch/blacklist', 'POST', { ids, blacklist_type: blacklistType, value: blacklisted ? 1 : 0 });
                 if (d.success) {
                     alert(`操作完成：实际更新 ${d.data?.changes ?? 0} 条`);
                 } else {

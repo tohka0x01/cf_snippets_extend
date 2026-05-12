@@ -1,5 +1,25 @@
 # 更新日志
 
+## 2026-05-12
+
+### 新增
+
+- CFIP 新增节点黑名单字段 `node_blacklisted`，与原有 DNS 黑名单独立生效。
+- CFIP 管理页面新增节点黑名单展示、筛选、单条操作和批量操作。
+- 新增黑名单拆分回归测试，覆盖 DNS 同步过滤与订阅过滤分离逻辑。
+
+### 变更
+
+- 原 `sync_blacklisted` 明确作为 DNS 黑名单，`/api/internal/cfip` 和 DNS/CF 同步只受该字段影响。
+- VLESS、SS、ARGO、Token 订阅和订阅生成接口改为默认按 `node_blacklisted` 过滤 CFIP。
+- `include_blacklisted_cfip` 的语义调整为“是否包含节点黑名单 CFIP”。
+- CFIP 拉黑接口支持通过 `blacklist_type` 区分 DNS 黑名单和节点黑名单。
+
+### 兼容性
+
+- 旧请求体中的 `sync_blacklisted` 和 `blacklisted` 继续兼容为 DNS 黑名单写法。
+- 导入导出格式新增 `node_blacklisted`；旧数据未提供该字段时按 `0` 处理。
+
 ## 2026-05-04
 
 ### 新增
