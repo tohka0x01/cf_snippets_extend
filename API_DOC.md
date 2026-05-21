@@ -202,6 +202,35 @@ URL 参数兼容驼峰别名 `includeBlacklistedCfip`。
 
 `requested` 表示请求中的有效 ID 数量，`changes` 表示实际更新行数。部分 ID 不存在时，`changes` 可能小于 `requested`。
 
+## 按失败次数批量删除
+
+- **URL**: `/api/cfip/batch/delete-by-fail-count`
+- **Method**: `POST`
+- **Headers**: `Content-Type: application/json`, `X-API-Key`
+- **说明**: 删除 `fail_count >= fail_count` 的 CFIP；阈值必须是大于 `0` 的整数。
+
+```json
+{
+  "fail_count": 3
+}
+```
+
+兼容字段名：`failCount`、`min_fail_count`、`threshold`。
+
+响应：
+
+```json
+{
+  "success": true,
+  "data": {
+    "fail_count": 3,
+    "changes": 2
+  }
+}
+```
+
+`changes` 表示实际删除行数。
+
 ## 批量状态更新
 
 - **URL**: `/api/cfip/batch/status`

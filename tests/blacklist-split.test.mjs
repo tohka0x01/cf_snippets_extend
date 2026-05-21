@@ -7,7 +7,7 @@ async function loadWorkerInternals() {
     let source = await fs.readFile(new URL('../public/_worker.js', import.meta.url), 'utf8');
     source = source.replace("import { connect } from 'cloudflare:sockets';", "const connect = () => { throw new Error('connect is not available in tests'); };");
     source = source.replace('export default {', 'const __workerDefault = {');
-    source += '\n;globalThis.__testExports = { handleGetCFIPs, handleSubscribe, handleSetCFIPBlacklist };';
+    source += '\n;globalThis.__testExports = { handleGetCFIPs, handleSubscribe, handleSetCFIPBlacklist, handleBatchDeleteCFIPByFailCount };';
 
     const context = {
         console,
@@ -63,6 +63,13 @@ class MockPreparedStatement {
     }
 
     async run() {
+        if (this.query.startsWith('DELETE FROM cf_ips WHERE COALESCE(fail_count, 0) >= ?')) {
+            const failCount = Number(this.params[0]);
+            const before = this.db.cfips.length;
+            this.db.cfips = this.db.cfips.filter(item => Number(item.fail_count || 0) < failCount);
+            return { meta: { changes: before - this.db.cfips.length } };
+        }
+
         if (this.query.startsWith('UPDATE cf_ips SET ')) {
             const fieldMatch = this.query.match(/UPDATE cf_ips SET (\w+) = \?, updated_at/);
             if (!fieldMatch) throw new Error(`Unsupported update query: ${this.query}`);
@@ -126,9 +133,9 @@ class MockDb {
 
 function createCfips() {
     return [
-        { id: 1, address: 'dns-blacklisted.example.com', port: 443, remark: 'dns-only', name: 'dns-only', status: 'enabled', sync_blacklisted: 1, node_blacklisted: 0, sort_order: 1, speed: 3000 },
-        { id: 2, address: 'node-blacklisted.example.com', port: 443, remark: 'node-only', name: 'node-only', status: 'enabled', sync_blacklisted: 0, node_blacklisted: 1, sort_order: 2, speed: 2000 },
-        { id: 3, address: 'clean.example.com', port: 443, remark: 'clean', name: 'clean', status: 'enabled', sync_blacklisted: 0, node_blacklisted: 0, sort_order: 3, speed: 1000 },
+        { id: 1, address: 'dns-blacklisted.example.com', port: 443, remark: 'dns-only', name: 'dns-only', status: 'enabled', sync_blacklisted: 1, node_blacklisted: 0, sort_order: 1, speed: 3000, fail_count: 3 },
+        { id: 2, address: 'node-blacklisted.example.com', port: 443, remark: 'node-only', name: 'node-only', status: 'enabled', sync_blacklisted: 0, node_blacklisted: 1, sort_order: 2, speed: 2000, fail_count: 5 },
+        { id: 3, address: 'clean.example.com', port: 443, remark: 'clean', name: 'clean', status: 'enabled', sync_blacklisted: 0, node_blacklisted: 0, sort_order: 3, speed: 1000, fail_count: 0 },
     ];
 }
 
@@ -180,4 +187,22 @@ test('typed blacklist API updates node blacklist independently', async () => {
     assert.equal(payload.data.node_blacklisted, 1);
     assert.equal(updated.node_blacklisted, 1);
     assert.equal(updated.sync_blacklisted, 1);
+});
+
+test('batch delete CFIP by fail_count threshold deletes matching records', async () => {
+    const { handleBatchDeleteCFIPByFailCount } = await loadWorkerInternals();
+    const db = new MockDb(createCfips());
+    const request = new Request('https://example.com/api/cfip/batch/delete-by-fail-count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fail_count: 3 }),
+    });
+
+    const response = await handleBatchDeleteCFIPByFailCount(request, db);
+    const payload = await response.json();
+    const remainingIds = db.cfips.map(item => item.id);
+
+    assert.equal(payload.success, true);
+    assert.equal(payload.data.changes, 2);
+    assert.deepEqual(remainingIds, [3]);
 });

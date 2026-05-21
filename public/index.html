@@ -983,6 +983,10 @@
                     <button class="btn btn-danger btn-sm" onclick="batchSetBlacklist('cfip','node',true)">节点拉黑</button>
                     <button class="btn btn-success btn-sm" onclick="batchSetBlacklist('cfip','node',false)">节点解黑</button>
                     <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
+                    <input type="number" id="cfipDeleteFailCount" min="1" step="1" placeholder="失败≥X"
+                        title="删除失败次数大于等于该值的 CFIP"
+                        style="width:76px;padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:12px">
+                    <button class="btn btn-danger btn-sm" onclick="batchDeleteCFIPByFailCount()">删除失败≥X</button>
                     <div style="position:relative">
                         <button class="btn btn-sm" style="background:#f0f0f0;border:1px solid #ddd"
                             onclick="toggleCFIPSettings(event)">⚙️ 设置</button>
@@ -3620,6 +3624,30 @@
             else if (type === 'outbound') await loadOutbounds();
             else if (type === 'argo') await loadArgoSubscribes();
             else await loadCFIPs();
+        }
+
+        async function batchDeleteCFIPByFailCount() {
+            const input = document.getElementById('cfipDeleteFailCount');
+            const failCount = Number(input?.value);
+            if (!Number.isInteger(failCount) || failCount <= 0) return alert('请输入大于 0 的失败次数');
+
+            if (!confirm(`确定删除失败次数大于等于 ${failCount} 的所有 CFIP？`)) return;
+
+            showLoading();
+            try {
+                const d = await api('/cfip/batch/delete-by-fail-count', 'POST', { fail_count: failCount });
+                if (d.success) {
+                    alert(`删除完成：成功 ${d.data?.changes ?? 0} 条`);
+                    if (input) input.value = '';
+                } else {
+                    alert('删除失败: ' + (d.error || '未知错误'));
+                }
+                await loadCFIPs();
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            } finally {
+                hideLoading();
+            }
         }
     </script>
 </body>

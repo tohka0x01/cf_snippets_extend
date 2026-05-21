@@ -412,6 +412,9 @@ export default {
         if (path === '/api/cfip/batch/blacklist' && method === 'POST') {
             return handleBatchBlacklistCFIP(request, env.DB);
         }
+        if (path === '/api/cfip/batch/delete-by-fail-count' && method === 'POST') {
+            return handleBatchDeleteCFIPByFailCount(request, env.DB);
+        }
         if (path.startsWith('/api/cfip/')) {
             const parts = path.split('/');
             const id = parts[3];
@@ -935,6 +938,22 @@ async function handleBatchDeleteCFIP(request, db) {
     const placeholders = ids.map(() => '?').join(',');
     await db.prepare(`DELETE FROM cf_ips WHERE id IN (${placeholders})`).bind(...ids).run();
     return json({ success: true });
+}
+
+async function handleBatchDeleteCFIPByFailCount(request, db) {
+    const body = await request.json();
+    const failCount = parsePositiveInteger(body.fail_count ?? body.failCount ?? body.min_fail_count ?? body.threshold);
+    if (!failCount) return json({ error: '失败次数阈值必须是正整数' }, 400);
+
+    const result = await db.prepare('DELETE FROM cf_ips WHERE COALESCE(fail_count, 0) >= ?')
+        .bind(failCount).run();
+    return json({
+        success: true,
+        data: {
+            fail_count: failCount,
+            changes: result.meta?.changes ?? 0
+        }
+    });
 }
 
 async function handleBatchStatusCFIP(request, db) {
