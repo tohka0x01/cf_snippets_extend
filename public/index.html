@@ -1556,6 +1556,12 @@
                 const statusClass = item.enabled ? 'online' : 'offline';
                 const statusText = item.enabled ? '已启用' : '已禁用';
                 const includeBlacklisted = Number(item.include_blacklisted_cfip) === 1;
+                const pathFormat = item.path_format || 'default';
+                const formatLabels = {
+                    'default': '默认格式 (?ed=2560&proxyip=xxx)',
+                    'compact': '简洁格式 (/s=xxx或/p=xxx)'
+                };
+                const formatText = formatLabels[pathFormat] || formatLabels['default'];
                 return `
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
 <div class="card-header">
@@ -1568,6 +1574,7 @@
 <div class="card-info">
 <div class="card-info-row"><strong>域名:</strong> ${item.snippets_domain}</div>
 <div class="card-info-row"><strong>路径:</strong> ${item.proxy_path || '/?ed=2560'}</div>
+<div class="card-info-row"><strong>路径格式:</strong> ${formatText}</div>
 <div class="card-info-row"><strong>节点黑名单:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
@@ -2661,6 +2668,8 @@
                 const domain = document.getElementById('subDomain').value.trim();
                 const remark = document.getElementById('subRemark').value.trim();
                 const includeBlacklistedCfip = document.getElementById('subIncludeBlacklisted').checked ? 1 : 0;
+                const pathFormatElement = document.getElementById('subPathFormat');
+                const pathFormat = pathFormatElement ? pathFormatElement.value : 'default';
 
                 if (!uuid || !domain) return alert('请填写必填项');
 
@@ -2669,7 +2678,7 @@
                 // SS 默认 /uuid
                 const path = type === 'ss' ? '/' + uuid : '/?ed=2560';
 
-                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined, includeBlacklistedCfip };
+                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined, includeBlacklistedCfip, pathFormat };
                 const method = editId ? 'PUT' : 'POST';
                 const apiPath = editId ? `/subscribe/config/${editId}` : '/subscribe/config';
 
@@ -2747,6 +2756,21 @@
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" placeholder="例如：美国节点"></div>
 <div class="form-group"><label>${label}</label><input type="text" id="subUuid" placeholder="${isVl ? '12cbf86b-22bb-45b6-aadb-cb622a538d6a' : 'your-password'}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" placeholder="your-worker.workers.dev"></div>
+${isVl ? `<div class="form-group">
+<label>路径格式</label>
+<select id="subPathFormat">
+<option value="default">默认格式 (?ed=2560&proxyip=xxx)</option>
+<option value="compact">简洁格式 (/s=xxx或/p=xxx)</option>
+</select>
+<div style="font-size:12px;color:#666;margin-top:6px;line-height:1.5">
+<strong>简洁格式说明：</strong><br>
+• /s=user:pass@host:port?ed=2560 (仅SOCKS5)<br>
+• /g=user:pass@host:port?ed=2560 (全局SOCKS5)<br>
+• /p=ProxyIP.domain.com?ed=2560 (仅Proxyip)<br>
+• /h=host:port?ed=2560 (回退http)<br>
+• /gh=host:port?ed=2560 (全局http)
+</div>
+</div>` : ''}
 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted"> 节点黑名单 CFIP 参与订阅生成</label>
 `;
             document.getElementById('addModal').classList.remove('hidden');
@@ -2763,11 +2787,28 @@
             editId = id;
             document.getElementById('modalTitle').textContent = `编辑订阅配置`;
             const label = type === 'vl' ? 'UUID' : '密码';
+            const isVl = type === 'vl' || cfg === 'vl' + 'ess';
+            const pathFormat = item.path_format || 'default';
             document.getElementById('modalBody').innerHTML = `
 <input type="hidden" id="subscribeType" value="${cfg}">
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" value="${item.remark || ''}"></div>
 <div class="form-group"><label>${label}</label><input type="text" id="subUuid" value="${item.uuid}"></div>
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" value="${item.snippets_domain}"></div>
+${isVl ? `<div class="form-group">
+<label>路径格式</label>
+<select id="subPathFormat">
+<option value="default" ${pathFormat === 'default' ? 'selected' : ''}>默认格式 (?ed=2560&proxyip=xxx)</option>
+<option value="compact" ${pathFormat === 'compact' ? 'selected' : ''}>简洁格式 (/s=xxx或/p=xxx)</option>
+</select>
+<div style="font-size:12px;color:#666;margin-top:6px;line-height:1.5">
+<strong>简洁格式说明：</strong><br>
+• /s=user:pass@host:port?ed=2560 (仅SOCKS5)<br>
+• /g=user:pass@host:port?ed=2560 (全局SOCKS5)<br>
+• /p=ProxyIP.domain.com?ed=2560 (仅Proxyip)<br>
+• /h=host:port?ed=2560 (回退http)<br>
+• /gh=host:port?ed=2560 (全局http)
+</div>
+</div>` : ''}
 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted" ${Number(item.include_blacklisted_cfip) === 1 ? 'checked' : ''}> 节点黑名单 CFIP 参与订阅生成</label>
 `;
             document.getElementById('addModal').classList.remove('hidden');

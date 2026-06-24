@@ -75,6 +75,7 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN sort_order INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN include_blacklisted_cfip INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN created_at TEXT`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN path_format TEXT DEFAULT 'default'`).run().catch(() => { });
 
         // 为所有没有 token 的配置生成 token
         const { results: noTokenConfigs } = await db.prepare('SELECT id FROM subscribe_config WHERE token IS NULL').all();
@@ -1356,7 +1357,7 @@ async function handleGetSubscribeConfigs(db, type) {
 
 async function handleAddSubscribeConfig(request, db) {
     const body = await request.json();
-    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0 } = body;
+    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0, pathFormat = 'default' } = body;
     const includeBlacklistedCfip = getIncludeBlacklistedCfipValue(body);
 
     if (!type || !uuid || !snippetsDomain) {
@@ -1377,8 +1378,8 @@ async function handleAddSubscribeConfig(request, db) {
     const token = generateToken();
 
     const r = await db.prepare(
-        'INSERT INTO subscribe_config (type, token, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, include_blacklisted_cfip, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
-    ).bind(type, token, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order, includeBlacklistedCfip).run();
+        'INSERT INTO subscribe_config (type, token, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, include_blacklisted_cfip, path_format, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+    ).bind(type, token, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order, includeBlacklistedCfip, pathFormat).run();
 
     return json({ success: true, data: { id: r.meta.last_row_id, token } });
 }
@@ -1398,6 +1399,7 @@ async function handleUpdateSubscribeConfig(request, db, id) {
     if (body.enabled !== undefined) { sets.push('enabled = ?'); vals.push(body.enabled ? 1 : 0); }
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
     if (body.include_blacklisted_cfip !== undefined || body.includeBlacklistedCfip !== undefined) { sets.push('include_blacklisted_cfip = ?'); vals.push(getIncludeBlacklistedCfipValue(body)); }
+    if (body.pathFormat !== undefined) { sets.push('path_format = ?'); vals.push(body.pathFormat); }
 
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
@@ -1645,9 +1647,49 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
 
     const proxyPath = config.proxy_path || '/?ed=2560';
     const configRemark = config.remark || 'V<span>LESS</span>';
+    const pathFormat = config.path_format || 'default';
 
     // 合并 ProxyIP 和 Outbound
     const allProxies = [...proxyips, ...outbounds];
+
+    // 辅助函数：根据格式生成路径
+    function generatePath(proxyip, baseProxyPath) {
+        if (pathFormat === 'compact') {
+            // 简洁格式
+            const address = proxyip.address;
+            const type = proxyip.type;
+
+            // 解析地址
+            if (type === 'socks5') {
+                // socks5://user:pass@host:port 或 socks5://host:port
+                const match = address.match(/^socks5:\/\/(.+)$/);
+                if (match) {
+                    const addrPart = match[1];
+                    // 提取查询参数（如果有）
+                    const queryMatch = baseProxyPath.match(/\?(.+)$/);
+                    const query = queryMatch ? queryMatch[1] : 'ed=2560';
+                    return `/s=${addrPart}?${query}`;
+                }
+            } else if (type === 'http' || type === 'https') {
+                // http://user:pass@host:port 或 http://host:port
+                const match = address.match(/^https?:\/\/(.+)$/);
+                if (match) {
+                    const addrPart = match[1];
+                    const queryMatch = baseProxyPath.match(/\?(.+)$/);
+                    const query = queryMatch ? queryMatch[1] : 'ed=2560';
+                    return `/h=${addrPart}?${query}`;
+                }
+            } else {
+                // ProxyIP（普通 IP/域名）
+                const queryMatch = baseProxyPath.match(/\?(.+)$/);
+                const query = queryMatch ? queryMatch[1] : 'ed=2560';
+                return `/p=${address}?${query}`;
+            }
+        }
+
+        // 默认格式
+        return baseProxyPath + (baseProxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+    }
 
     // 生成所有 ProxyIP × CFIP 的组合（相同 ProxyIP 的放在一起）
     const links = [];
@@ -1666,7 +1708,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
                 let host = cfip.address;
                 if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
 
-                const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                const path = generatePath(proxyip, proxyPath);
                 const cfipRemark = cfip.name || cfip.remark || host;
                 const nodeName = `${cfipRemark}-${proxyip.remark}-${configRemark}`;
 
@@ -1707,14 +1749,14 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
                 topSpeedCfips.forEach((cfip, i) => {
                     let host = cfip.address;
                     if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
-                    const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                    const path = generatePath(proxyip, proxyPath);
                     const nodeName = `最大速度${i + 1}-${proxyip.remark}`;
                     smartLinks.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
                 });
                 topLatencyCfips.forEach((cfip, i) => {
                     let host = cfip.address;
                     if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
-                    const path = proxyPath + (proxyPath.includes('?') ? '&' : '?') + `proxyip=${encodeURIComponent(proxyip.address)}`;
+                    const path = generatePath(proxyip, proxyPath);
                     const nodeName = `最低延迟${i + 1}-${proxyip.remark}`;
                     smartLinks.push(`v${'less'}://${uuid}@${host}:${cfip.port || 443}?encryption=none&security=tls&sni=${config.snippets_domain}&fp=firefox&allowInsecure=1&type=ws&host=${config.snippets_domain}&path=${encodeURIComponent(path)}#${encodeURIComponent(nodeName)}`);
                 });
