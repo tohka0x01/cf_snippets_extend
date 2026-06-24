@@ -5,33 +5,39 @@
 ### 新增
 
 - VLESS 订阅配置新增**路径格式选择**功能，支持默认格式和简洁格式。
-- 简洁格式支持多种代理类型的简化表示：
-  - `/s=user:pass@host:port?ed=2560` - 仅 SOCKS5 代理
-  - `/g=user:pass@host:port?ed=2560` - 全局 SOCKS5 代理
-  - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
-  - `/h=host:port?ed=2560` - 回退 HTTP 代理
-  - `/gh=host:port?ed=2560` - 全局 HTTP 代理
-- 订阅配置列表显示当前使用的路径格式。
-- 订阅生成时自动根据代理类型和配置的格式生成相应路径。
-- 智能节点（最大速度/最低延迟）也支持简洁格式。
+- 简洁格式支持**全局模式**和**仅代理模式**切换：
+  - **全局模式**（默认）：所有流量通过代理
+    - `/g=user:pass@host:port?ed=2560` - 全局 SOCKS5 代理
+    - `/gh=host:port?ed=2560` - 全局 HTTP 代理
+    - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
+  - **仅代理模式**：仅特定流量通过代理
+    - `/s=user:pass@host:port?ed=2560` - 仅 SOCKS5 代理
+    - `/h=host:port?ed=2560` - 回退 HTTP 代理
+    - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
+- 订阅配置列表显示当前使用的路径格式和代理模式。
+- 订阅生成时自动根据代理类型、格式配置和模式生成相应路径。
+- 智能节点（最大速度/最低延迟）也支持简洁格式和模式选择。
 
 ### 变更
 
 - `subscribe_config` 表新增 `path_format` 字段（TEXT，默认值 'default'）。
-- 订阅配置新增和更新 API 支持 `pathFormat` 参数。
-- 订阅生成逻辑新增 `generatePath()` 函数，根据格式配置动态生成路径。
+- `subscribe_config` 表新增 `compact_global_mode` 字段（INTEGER，默认值 1，表示全局模式）。
+- 订阅配置新增和更新 API 支持 `pathFormat` 和 `compactGlobalMode` 参数。
+- 订阅生成逻辑根据 `compact_global_mode` 动态选择路径前缀。
 
 ### 兼容性
 
 - 现有订阅配置自动使用默认格式（`path_format = 'default'`）。
+- 简洁格式配置默认使用全局模式（`compact_global_mode = 1`）。
 - 不影响已有订阅的正常使用。
-- 新旧格式可以共存，互不干扰。
+- 新旧格式和模式可以共存，互不干扰。
 
 ### 说明
 
-- 路径格式选项仅适用于 VLESS 订阅，SS 订阅不受影响。
+- 路径格式和代理模式选项仅适用于 VLESS 订阅，SS 订阅不受影响。
+- 代理模式选择器仅在选择简洁格式时显示。
 - 简洁格式需要后端 Worker 支持相应的路径解析逻辑。
-- 修改路径格式后，订阅 Token 保持不变，但生成的节点路径会根据新格式变化。
+- 修改路径格式或代理模式后，订阅 Token 保持不变，但生成的节点路径会根据新配置变化。
 
 ## 2026-05-21
 

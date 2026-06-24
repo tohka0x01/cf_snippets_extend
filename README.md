@@ -305,13 +305,19 @@
 3. 填写 **Path**（默认：`/?ed=2560`）
 4. **选择路径格式**（新功能）：
    - **默认格式**：传统的 URL 查询参数格式 `/?ed=2560&proxyip=xxx`
-   - **简洁格式**：更简洁的路径参数格式
-     - `/s=user:pass@host:port?ed=2560` - 仅 SOCKS5 代理
-     - `/g=user:pass@host:port?ed=2560` - 全局 SOCKS5 代理
-     - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
-     - `/h=host:port?ed=2560` - 回退 HTTP 代理
-     - `/gh=host:port?ed=2560` - 全局 HTTP 代理
-5. 点击 **💾 保存并生成订阅**
+   - **简洁格式**：更简洁的路径参数格式，支持两种代理模式：
+     - **全局模式**（默认推荐）：所有流量通过代理
+       - `/g=user:pass@host:port?ed=2560` - 全局 SOCKS5 代理
+       - `/gh=host:port?ed=2560` - 全局 HTTP 代理
+       - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
+     - **仅代理模式**：仅特定流量通过代理
+       - `/s=user:pass@host:port?ed=2560` - 仅 SOCKS5 代理
+       - `/h=host:port?ed=2560` - 回退 HTTP 代理
+       - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
+5. **选择代理模式**（仅简洁格式）：
+   - **全局模式**：所有流量都通过代理（/g=, /gh=）
+   - **仅代理模式**：仅特定流量通过代理（/s=, /h=）
+6. 点击 **💾 保存并生成订阅**
 
 生成后会显示：
 - **订阅地址**（格式：`https://你的Pages域名/sub/你的UUID`，例如：`https://cf-snippets-extend.pages.dev/sub/你的UUID`）
@@ -319,7 +325,9 @@
 
 **路径格式说明**：
 - 简洁格式可以让订阅链接更短，便于分享和管理
-- 后端会根据代理类型自动选择对应的格式前缀
+- 全局模式适合需要全局代理的场景（推荐）
+- 仅代理模式适合需要分流的场景
+- 后端会根据代理类型和模式自动选择对应的格式前缀
 - 现有订阅默认使用传统格式，不影响已有节点
 
 #### Shadowsocks 订阅
