@@ -6,368 +6,641 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CF Snippets Extend</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
         * {
             margin: 0;
             padding: 0;
-            box-sizing: border-box
+            box-sizing: border-box;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            min-height: 100vh
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-feature-settings: "ss01", "ss02";
+            background-color: #fafafa;
+            color: #171717;
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+
+        /* Ambient background glow */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 400px;
+            background: radial-gradient(circle at 15% 0%, rgba(80, 227, 194, 0.06), transparent 45%),
+                        radial-gradient(circle at 85% 0%, rgba(0, 112, 243, 0.06), transparent 45%),
+                        radial-gradient(circle at 50% 0%, rgba(255, 0, 128, 0.04), transparent 45%);
+            z-index: -1;
+            pointer-events: none;
         }
 
         .container {
             max-width: 1280px;
             margin: 0 auto;
-            padding: 20px 12px
+            padding: 40px 24px;
         }
 
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: #171717;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+        }
+
+        /* Mono Elements */
+        code, pre, .mono-text, .addr-cell, .card-latency {
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace !important;
+            font-size: 13px;
+        }
+
+        /* Login Container */
         .login-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh
+            min-height: 100vh;
+            background-color: #fafafa;
+            position: relative;
+            padding: 24px;
         }
 
         .login-box {
-            background: #fff;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+            background: #ffffff;
+            padding: 40px 32px;
+            border-radius: 12px;
+            border: 1px solid #ebebeb;
+            box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.02), 
+                        0px 8px 16px -4px rgba(0, 0, 0, 0.04);
             width: 100%;
-            max-width: 400px
+            max-width: 400px;
+            z-index: 10;
         }
 
         .login-box h1 {
             text-align: center;
-            color: #667eea;
-            margin-bottom: 30px
+            font-size: 24px;
+            margin-bottom: 24px;
+            font-weight: 600;
+            color: #171717;
+            letter-spacing: -0.04em;
         }
 
         .form-group {
-            margin-bottom: 20px
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
-            font-weight: 500
+            color: #4d4d4d;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
         }
 
         .form-group input,
-        .form-group select {
+        .form-group select,
+        .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e1e8ed;
-            border-radius: 8px;
-            font-size: 16px
+            padding: 10px 12px;
+            border: 1px solid #ebebeb;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #ffffff;
+            color: #171717;
+            font-family: inherit;
+            height: 40px;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .form-group input:focus {
+        .form-group textarea {
+            height: auto;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
-            border-color: #667eea
+            border-color: #a1a1a1;
+            box-shadow: 0 0 0 1px #a1a1a1;
         }
 
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: #888888;
+        }
+
+        /* Buttons */
         .btn {
-            padding: 8px 16px;
-            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 38px;
+            padding: 0 16px;
+            border: 1px solid transparent;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            transition: all .2s
+            font-weight: 500;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+            white-space: nowrap;
+            user-select: none;
         }
 
         .btn-primary {
-            background: #667eea;
-            color: #fff
+            background-color: #171717;
+            color: #ffffff;
+            border-color: #171717;
         }
 
         .btn-primary:hover {
-            background: #5568d3
+            background-color: #333333;
+            border-color: #333333;
+        }
+
+        .btn-primary:active {
+            background-color: #000000;
+            border-color: #000000;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #171717;
+            border-color: #ebebeb;
+        }
+
+        .btn-secondary:hover {
+            background-color: #fafafa;
+            border-color: #a1a1a1;
         }
 
         .btn-success {
-            background: #48c774;
-            color: #fff
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border-color: #c8e6c9;
         }
 
         .btn-success:hover {
-            background: #3abb67
+            background-color: #c8e6c9;
         }
 
         .btn-warning {
-            background: #ffdd57;
-            color: #333
+            background-color: #ffefcf;
+            color: #ab570a;
+            border-color: #ffe0b2;
         }
 
         .btn-warning:hover {
-            background: #ffd83d
+            background-color: #ffe0b2;
         }
 
         .btn-info {
-            background: #3298dc;
-            color: #fff
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border-color: #bbdefb;
         }
 
         .btn-info:hover {
-            background: #2793da
+            background-color: #bbdefb;
         }
 
         .btn-danger {
-            background: #f14668;
-            color: #fff
+            background-color: #ffebee;
+            color: #c62828;
+            border-color: #ffcdd2;
         }
 
         .btn-danger:hover {
-            background: #ef2e4a
+            background-color: #ffcdd2;
         }
 
         .btn-sm {
-            padding: 4px 10px;
+            height: 30px;
+            padding: 0 10px;
             font-size: 12px;
-            white-space: nowrap
+            border-radius: 4px;
         }
 
         .btn-full {
             width: 100%;
-            padding: 12px
+            height: 40px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .hidden {
-            display: none !important
+            display: none !important;
         }
 
+        /* Header */
         .header {
-            background: #fff;
-            padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, .1);
+            background: #ffffff;
+            padding: 16px 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            border: 1px solid #ebebeb;
+            box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 2px 2px rgba(0, 0, 0, 0.04);
             display: flex;
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            box-sizing: border-box
         }
 
         .header h1 {
-            color: #667eea;
-            font-size: 24px
+            color: #171717;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.04em;
         }
 
+        /* Tabs Navigation */
         .tabs {
             display: flex;
-            gap: 10px;
-            background: #fff;
-            padding: 10px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, .1);
+            gap: 4px;
+            border-bottom: 1px solid #ebebeb;
+            margin-bottom: 28px;
             width: 100%;
-            box-sizing: border-box
+            overflow-x: auto;
+            padding-bottom: 0;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        
+        .tabs::-webkit-scrollbar {
+            display: none; /* Hide scrollbar Chrome/Safari */
         }
 
         .tab {
-            padding: 10px 20px;
+            padding: 10px 16px;
             border: none;
             background: transparent;
             cursor: pointer;
-            border-radius: 8px;
             font-size: 14px;
-            color: #666;
-            white-space: nowrap
+            font-weight: 500;
+            color: #888888;
+            white-space: nowrap;
+            position: relative;
+            transition: color 0.15s ease;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: transparent;
+            transition: background-color 0.15s ease;
+        }
+
+        .tab:hover {
+            color: #171717;
         }
 
         .tab.active {
-            background: #667eea;
-            color: #fff
+            color: #171717;
+            font-weight: 600;
         }
 
+        .tab.active::after {
+            background-color: #171717;
+        }
+
+        /* Panels */
         .panel {
-            background: #fff;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, .1);
+            background: #ffffff;
+            padding: 28px;
+            border-radius: 8px;
+            border: 1px solid #ebebeb;
+            box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 2px 2px rgba(0, 0, 0, 0.04);
             width: 100%;
-            box-sizing: border-box
+            margin-bottom: 24px;
         }
 
         .panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #fafafa;
         }
 
         .panel-header h2 {
             font-size: 18px;
-            color: #333
+            color: #171717;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+        }
+
+        /* List views as table containers */
+        #proxyipListView,
+        #outboundListView,
+        #cfipListView {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #ebebeb;
+            border-radius: 6px;
+            margin-top: 16px;
         }
 
         .table {
             width: 100%;
-            border-collapse: collapse
+            border-collapse: collapse;
+            text-align: left;
         }
 
         .table th,
         .table td {
-            padding: 10px 8px;
-            text-align: left;
-            border-bottom: 1px solid #e1e8ed;
-            font-size: 14px;
-            vertical-align: middle
+            padding: 12px 16px;
+            border-bottom: 1px solid #ebebeb;
+            font-size: 13px;
+            vertical-align: middle;
         }
 
         .table th {
-            background: #f7f9fc;
-            color: #333;
-            font-weight: 600
+            background: #fafafa;
+            color: #888888;
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            user-select: none;
         }
 
         .table th.sort-header {
             cursor: pointer;
-            user-select: none;
-            transition: background .2s
+            transition: background-color 0.15s ease, color 0.15s ease;
         }
 
         .table th.sort-header:hover {
-            background: #eef1f5
+            background-color: #f5f5f5;
+            color: #171717;
         }
 
+        .table tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #fafafa;
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badges */
         .badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 1.2;
         }
 
         .badge-info {
             background: #e3f2fd;
-            color: #1976d2
+            color: #1976d2;
         }
 
         .badge-success {
             background: #e8f5e9;
-            color: #2e7d32
+            color: #2e7d32;
         }
 
         .badge-secondary {
-            background: #f1f3f4;
-            color: #5f6368
+            background: #fafafa;
+            color: #888888;
+            border: 1px solid #ebebeb;
         }
 
         .badge-danger {
             background: #ffebee;
-            color: #c62828
+            color: #c62828;
         }
 
         .actions {
             display: flex;
-            gap: 6px;
+            gap: 8px;
             align-items: center;
-            flex-wrap: nowrap
         }
 
+        /* Modals */
         .modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, .5);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000
+            z-index: 1000;
+            padding: 16px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .modal-content {
-            background: #fff;
-            padding: 24px;
-            border-radius: 16px;
+            background: #ffffff;
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid #ebebeb;
             width: 100%;
-            max-width: 450px;
+            max-width: 460px;
             max-height: 90vh;
-            overflow-y: auto
+            overflow-y: auto;
+            box-shadow: 0px 8px 16px -4px rgba(0,0,0,0.08), 
+                        0px 24px 32px -8px rgba(0,0,0,0.08);
+            position: relative;
+            animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .modal-content-large {
-            background: #fff;
-            padding: 24px;
-            border-radius: 16px;
+            background: #ffffff;
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid #ebebeb;
             width: 100%;
             max-width: 900px;
             max-height: 90vh;
-            overflow-y: auto
+            overflow-y: auto;
+            box-shadow: 0px 8px 16px -4px rgba(0,0,0,0.08), 
+                        0px 24px 32px -8px rgba(0,0,0,0.08);
+            position: relative;
+            animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(10px) scale(0.98); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px
+            margin-bottom: 24px;
+            border-bottom: 1px solid #fafafa;
+            padding-bottom: 12px;
         }
 
         .modal-header h3 {
             font-size: 18px;
-            color: #333
+            color: #171717;
+            font-weight: 600;
         }
 
         .close-btn {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
-            color: #999
+            color: #888888;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            transition: background-color 0.15s ease, color 0.15s ease;
         }
 
+        .close-btn:hover {
+            background-color: #fafafa;
+            color: #171717;
+        }
+
+        /* Alert styling */
         .alert {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 16px
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 1px solid transparent;
         }
 
         .alert-success {
             background: #e8f5e9;
-            color: #2e7d32
+            color: #2e7d32;
+            border-color: #c8e6c9;
         }
 
         .alert-error {
             background: #ffebee;
-            color: #c62828
+            color: #c62828;
+            border-color: #ffcdd2;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-color: #bbdefb;
+        }
+
+        .alert-warning {
+            background: #ffefcf;
+            color: #ab570a;
+            border-color: #ffe0b2;
+        }
+
+        /* Callouts */
+        .panel > div[style*="background:#e8f0fe"] {
+            background-color: #ffffff !important;
+            border: 1px solid #ebebeb !important;
+            border-left: 3px solid #0070f3 !important; /* Blue for info */
+            padding: 16px 20px !important;
+            border-radius: 0 6px 6px 0 !important;
+            margin-bottom: 24px !important;
+            font-size: 13px !important;
+            color: #4d4d4d !important;
+            line-height: 1.6 !important;
+        }
+
+        .panel > div[style*="background:#fff3cd"] {
+            background-color: #ffffff !important;
+            border: 1px solid #ebebeb !important;
+            border-left: 3px solid #f5a623 !important; /* Amber for warning */
+            padding: 16px 20px !important;
+            border-radius: 0 6px 6px 0 !important;
+            margin-bottom: 24px !important;
+            font-size: 13px !important;
+            color: #4d4d4d !important;
+            line-height: 1.6 !important;
+        }
+
+        .panel > div[style*="background:#e8f0fe"] strong,
+        .panel > div[style*="background:#fff3cd"] strong {
+            color: #171717 !important;
+        }
+
+        /* Filter Panel & Rows */
+        .panel > div[style*="background:#f7f9fc"] {
+            background-color: #ffffff !important;
+            border: 1px solid #ebebeb !important;
+            padding: 12px 16px !important;
+            border-radius: 6px !important;
+            margin-bottom: 16px !important;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         .result-box {
-            background: #f7f9fc;
+            background: #fafafa;
+            border: 1px solid #ebebeb;
             padding: 16px;
-            border-radius: 8px;
-            margin-top: 16px
+            border-radius: 6px;
+            margin-top: 20px;
         }
 
         .result-box pre {
-            background: #fff;
+            background: #ffffff;
+            border: 1px solid #ebebeb;
             padding: 12px;
             border-radius: 4px;
             font-size: 12px;
             white-space: pre-wrap;
             word-break: break-all;
-            max-height: 150px;
-            overflow: auto
+            max-height: 180px;
+            overflow-y: auto;
+            color: #171717;
         }
 
+        /* Custom Toggle Switch */
         .switch {
             position: relative;
             display: inline-block;
-            width: 40px;
-            height: 22px
+            width: 36px;
+            height: 20px;
         }
 
         .switch input {
             opacity: 0;
             width: 0;
-            height: 0
+            height: 0;
         }
 
         .slider {
@@ -377,451 +650,379 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: #ccc;
-            border-radius: 22px
+            background-color: #e5e5e5;
+            transition: background-color 0.15s ease;
+            border-radius: 20px;
         }
 
         .slider:before {
             position: absolute;
             content: "";
-            height: 16px;
-            width: 16px;
+            height: 14px;
+            width: 14px;
             left: 3px;
             bottom: 3px;
-            background: #fff;
+            background-color: #ffffff;
+            transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
             border-radius: 50%;
-            transition: .3s
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
-        input:checked+.slider {
-            background: #667eea
+        input:checked + .slider {
+            background-color: #171717;
         }
 
-        input:checked+.slider:before {
-            transform: translateX(18px)
+        input:checked + .slider:before {
+            transform: translateX(16px);
         }
 
         .addr-cell {
-            max-width: 200px;
+            max-width: 240px;
             word-break: break-all;
-            cursor: help
+            cursor: help;
+            color: #4d4d4d;
         }
 
+        /* Loading Spinner */
         .loading {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, .5);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(2px);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 2000
+            z-index: 2000;
+            animation: fadeIn 0.15s ease;
         }
 
         .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            width: 36px;
+            height: 36px;
+            border: 2px solid #ebebeb;
+            border-top: 2px solid #171717;
             border-radius: 50%;
-            animation: spin 1s linear infinite
+            animation: spin 0.6s linear infinite;
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg)
-            }
-
-            100% {
-                transform: rotate(360deg)
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .btn:disabled {
-            opacity: .6;
-            cursor: not-allowed
-        }
-
+        /* Card Grid View (ProxyIP, Outbounds, CFIP) */
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-top: 16px
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
         }
 
         .outbound-card {
-            background: #fff;
-            border: 2px solid #e1e8ed;
-            border-radius: 12px;
-            padding: 12px;
+            background: #ffffff;
+            border: 1px solid #ebebeb;
+            border-radius: 8px;
+            padding: 20px;
             position: relative;
-            transition: all .3s;
-            min-width: 0;
-            overflow: hidden
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.01), 0px 2px 2px rgba(0, 0, 0, 0.02);
+            min-height: 160px;
         }
 
         .outbound-card:hover {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, .2)
-        }
-
-        .outbound-card.offline {
-            border-color: #e1e8ed;
-            background: #fff
-        }
-
-        .outbound-card.online {
-            border-color: #e1e8ed;
-            background: #fff
+            border-color: #a1a1a1;
+            box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.02), 0px 8px 16px -4px rgba(0, 0, 0, 0.04);
         }
 
         .outbound-card.tested-online {
-            border-color: #48c774;
-            background: #f0fdf4
+            border-color: #a1dbb2;
+            background: #fbfdfb;
         }
 
         .outbound-card.tested-offline {
-            border-color: #f14668;
-            background: #fff5f7
+            border-color: #f1b3bc;
+            background: #fdfafb;
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 8px;
-            min-width: 0;
-            overflow: hidden
+            margin-bottom: 12px;
         }
 
         .card-title {
             font-size: 15px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
+            color: #171717;
+            letter-spacing: -0.02em;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 100%;
-            min-width: 0
         }
 
         .card-checkbox {
             position: absolute;
-            top: 10px;
-            right: 10px
-        }
-
-        .card-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            margin-bottom: 6px
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block
-        }
-
-        .status-dot.online {
-            background: #48c774
-        }
-
-        .status-dot.offline {
-            background: #f14668
-        }
-
-        .status-dot.unknown {
-            background: #999
+            top: 16px;
+            right: 16px;
+            width: 16px;
+            height: 16px;
+            border: 1px solid #ebebeb;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
         }
 
         .card-info {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 8px;
-            line-height: 1.5;
-            min-width: 0;
-            overflow: hidden
+            font-size: 13px;
+            color: #4d4d4d;
+            margin-bottom: 16px;
+            flex-grow: 1;
         }
 
         .card-info-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 3px;
-            overflow: hidden;
-            min-width: 0
+            margin-bottom: 6px;
+            gap: 12px;
         }
 
-        .card-info-row>span {
+        .card-info-row > strong {
+            color: #888888;
+            font-weight: 500;
+        }
+
+        .card-info-row > span {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 100%;
-            min-width: 0
+            color: #171717;
         }
 
         .card-latency {
             font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            margin: 8px 0;
-            min-height: 28px
+            font-weight: 600;
+            color: #888888;
+            min-height: 28px;
+            display: flex;
+            align-items: center;
         }
 
-        .card-latency.good {
-            color: #48c774
-        }
-
-        .card-latency.medium {
-            color: #ffdd57
-        }
-
-        .card-latency.bad {
-            color: #f14668
-        }
-
-        .card-latency.unknown {
-            color: #999;
-            font-size: 13px
-        }
+        .card-latency.good { color: #2e7d32; }
+        .card-latency.medium { color: #ab570a; }
+        .card-latency.bad { color: #c62828; }
+        .card-latency.unknown { color: #888888; }
 
         .card-actions {
             display: flex;
-            gap: 6px;
-            flex-wrap: nowrap;
-            margin-top: 10px
-        }
-
-        .card-actions .btn {
-            flex: 0 0 auto;
-            min-width: auto
-        }
-
-        .card-actions .card-latency {
-            flex: 1;
-            text-align: left;
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
-            min-height: auto;
-            display: flex;
-            align-items: center
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #fafafa;
         }
 
         .exit-link {
-            color: #667eea;
-            text-decoration: underline;
+            color: #0070f3;
+            text-decoration: none;
             cursor: pointer;
-            transition: all .2s
+            transition: color 0.15s ease;
         }
 
         .exit-link:hover {
-            color: #5568d3;
+            color: #0761d1;
             text-decoration: underline;
-            font-weight: 600
         }
 
-        @media (max-width:768px) {
+        /* Filter Row Settings in CFIP Panel */
+        .filter-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: center;
+            background: #fafafa;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #ebebeb;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #4d4d4d;
+        }
+
+        .filter-group label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            user-select: none;
+        }
+
+        /* Settings Dropdown */
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 6px;
+            background: #ffffff;
+            border: 1px solid #ebebeb;
+            border-radius: 8px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 16px;
+            z-index: 100;
+            min-width: 200px;
+            animation: fadeIn 0.15s ease;
+        }
+
+        /* Pagination bar */
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #fafafa;
+            border: 1px solid #ebebeb;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        /* Custom Checkbox */
+        input[type="checkbox"]:not(.slider input) {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 1px solid #ebebeb;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            background-color: #ffffff;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+
+        input[type="checkbox"]:not(.slider input):checked {
+            background-color: #171717;
+            border-color: #171717;
+        }
+
+        input[type="checkbox"]:not(.slider input):checked::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 5px;
+            width: 4px;
+            height: 8px;
+            border: solid #ffffff;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        /* Override general text inputs */
+        input[type="text"], input[type="password"], input[type="number"], select, textarea {
+            background-color: #ffffff !important;
+            border: 1px solid #ebebeb !important;
+            color: #171717 !important;
+            border-radius: 6px !important;
+            font-family: inherit !important;
+            padding: 8px 12px !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+        }
+        
+        input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none !important;
+            border-color: #a1a1a1 !important;
+            box-shadow: 0 0 0 1px #a1a1a1 !important;
+        }
+
+        .panel-header select {
+            height: 30px !important;
+            padding: 4px 8px !important;
+            font-size: 12px !important;
+        }
+
+        /* Inline code inputs in description */
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 90%;
+            border: 1px solid #ebebeb;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
             .container {
-                padding: 10px 8px
+                padding: 16px 12px;
             }
 
             .header {
                 flex-direction: column;
-                gap: 8px;
-                align-items: stretch
+                gap: 12px;
+                align-items: stretch;
+                padding: 16px;
             }
 
             .header h1 {
                 font-size: 18px;
-                text-align: center
+                text-align: center;
             }
 
-            .header>div {
+            .header > div {
                 justify-content: center;
                 flex-wrap: wrap;
-                gap: 6px
-            }
-
-            #toggleGlobalViewBtn {
-                display: none !important
-            }
-
-            .tabs {
-                overflow-x: auto;
-                white-space: nowrap;
-                -webkit-overflow-scrolling: touch;
-                padding: 8px 10px
-            }
-
-            .tab {
-                flex-shrink: 0;
-                font-size: 12px;
-                padding: 6px 12px
+                gap: 8px;
             }
 
             .panel {
-                padding: 12px;
-                background: #fff;
-                border-radius: 16px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, .1)
+                padding: 16px;
             }
 
             .panel-header {
                 flex-direction: column;
-                gap: 6px;
-                align-items: stretch
+                gap: 12px;
+                align-items: stretch;
             }
 
             .panel-header h2 {
-                font-size: 14px;
                 text-align: center;
-                margin-bottom: 4px
             }
 
-            .panel-header>div {
-                display: flex !important;
-                flex-wrap: nowrap !important;
-                overflow-x: auto !important;
-                overflow-y: hidden !important;
-                -webkit-overflow-scrolling: touch !important;
-                gap: 6px !important;
-                padding: 4px 0 !important;
-                justify-content: flex-start !important;
-                scrollbar-width: thin;
-                width: 100%
+            .panel-header > div {
+                justify-content: center;
             }
 
-            .panel-header>div::-webkit-scrollbar {
-                height: 4px
+            .table-container {
+                border: none;
             }
 
-            .panel-header>div::-webkit-scrollbar-thumb {
-                background: #667eea;
-                border-radius: 2px
-            }
-
-            .panel-header .btn {
-                font-size: 12px !important;
-                padding: 6px 12px !important;
-                white-space: nowrap !important;
-                flex: 0 0 auto !important;
-                min-width: fit-content !important
-            }
-
-            .panel>div[style*="background:#e8f0fe"] {
-                font-size: 11px;
-                padding: 8px;
-                margin-bottom: 8px
-            }
-
-            #proxyipListView,
-            #outboundListView,
-            #cfipListView,
-            #argoListView {
-                display: none !important
-            }
-
-            #proxyipCardView,
-            #outboundCardView,
-            #cfipCardView,
-            #argoCardView {
-                display: grid !important
+            .table th, .table td {
+                padding: 10px 8px;
             }
 
             .card-grid {
                 grid-template-columns: 1fr;
-                gap: 10px
-            }
-
-            .outbound-card {
-                padding: 10px
-            }
-
-            .card-title {
-                font-size: 14px
-            }
-
-            .card-info {
-                font-size: 11px;
-                margin-bottom: 6px
-            }
-
-            .card-info-row {
-                font-size: 11px;
-                margin-bottom: 2px
-            }
-
-            .card-actions {
-                gap: 8px;
-                margin-top: 8px
+                gap: 12px;
             }
 
             .modal-content,
             .modal-content-large {
-                width: 95%;
-                max-width: 95%;
-                margin: 10px;
-                padding: 12px
-            }
-
-            .modal-header h3 {
-                font-size: 16px
-            }
-
-            .form-group {
-                margin-bottom: 12px
-            }
-
-            .form-group label {
-                font-size: 13px
-            }
-
-            .form-group input,
-            .form-group select,
-            .form-group textarea {
-                font-size: 13px;
-                padding: 8px
-            }
-
-            .login-box {
                 padding: 20px;
-                margin: 10px
             }
-
-            .login-box h1 {
-                font-size: 20px
-            }
-
-            .result-box {
-                padding: 12px
-            }
-
-            .result-box pre {
-                font-size: 10px;
-                max-height: 100px;
-                padding: 8px
-            }
-
-            .switch {
-                width: 36px;
-                height: 20px
-            }
-
-            .switch .slider:before {
-                height: 14px;
-                width: 14px;
-                left: 3px;
-                bottom: 3px
-            }
-
+            
             .switch input:checked+.slider:before {
-                transform: translateX(16px)
+                transform: translateX(16px);
             }
         }
     </style>
@@ -830,7 +1031,7 @@
 <body>
     <div id="loginPage" class="login-container">
         <div class="login-box">
-            <h1 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🔐 CF Snippets Extend</h1>
+            <h1 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CF Snippets Extend.</h1>
             <div id="loginAlert"></div>
             <div class="form-group"><label>API Key</label><input type="password" id="apiKeyInput"
                     placeholder="请输入 API Key"></div>
@@ -844,7 +1045,7 @@
                             d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
                         </path>
                     </svg>
-                    ⭐ Star on GitHub
+                    GitHub Project
                 </a>
             </div>
         </div>
@@ -853,7 +1054,7 @@
     <div id="mainPage" class="container hidden">
         <div class="header">
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                <h1 style="margin:0;white-space:nowrap">📡 CF Snippets Extend</h1>
+                <h1 style="margin:0;white-space:nowrap;letter-spacing:-0.04em">CF Snippets Extend.</h1>
                 <a href="https://github.com/assast/cf_snippets_extend" target="_blank"
                     style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#24292e;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;transition:all .2s;white-space:nowrap"
                     onmouseover="this.style.background='#1a1e22'" onmouseout="this.style.background='#24292e'">
@@ -865,38 +1066,44 @@
                     Star
                 </a>
             </div>
-            <div style="display:flex;gap:8px;flex-shrink:0;justify-content:flex-end"><button id="toggleGlobalViewBtn"
-                    class="btn btn-primary btn-sm" data-icon="📋" onclick="toggleGlobalView()">📋 切换卡片</button><button
-                    class="btn btn-success btn-sm" data-icon="📤" onclick="exportData()">📤 导出</button><button
-                    class="btn btn-primary btn-sm" data-icon="📥" onclick="importData()">📥 导入</button><button
-                    class="btn btn-danger btn-sm" data-icon="🚪" onclick="logout()">🚪 退出</button></div>
+            <div style="display:flex;gap:8px;flex-shrink:0;justify-content:flex-end">
+                <button id="toggleGlobalViewBtn" class="btn btn-secondary btn-sm" onclick="toggleGlobalView()">切换卡片</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportData()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                    导出
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="importData()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    导入
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="logout()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                    退出
+                </button>
+            </div>
         </div>
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('proxyip',this)">ProxyIP(反代IP)</button>
+            <button class="tab active" onclick="switchTab('proxyip',this)">ProxyIP (反代IP)</button>
             <button class="tab" onclick="switchTab('outbound',this)">全局出站</button>
-            <button class="tab" onclick="switchTab('cfip',this)">CFIP(优选域名)</button>
-            <button class="tab" onclick="switchTab('vlSubscribe',this)">订阅生成V<span>LESS</span></button>
-            <button class="tab" onclick="switchTab('ssSubscribe',this)">订阅生成SS</button>
-            <button class="tab" onclick="switchTab('argo',this)">ARGO优选</button>
+            <button class="tab" onclick="switchTab('cfip',this)">CFIP (优选域名)</button>
+            <button class="tab" onclick="switchTab('vlSubscribe',this)">订阅生成 VLESS</button>
+            <button class="tab" onclick="switchTab('ssSubscribe',this)">订阅生成 SS</button>
+            <button class="tab" onclick="switchTab('argo',this)">ARGO 优选</button>
         </div>
 
         <div id="proxyipPanel" class="panel">
             <div class="panel-header">
-                <h2>ProxyIP(反代IP) 管理</h2>
+                <h2>ProxyIP (反代IP) 管理</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('proxyip')">➕
-                        添加</button>
-                    <button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('proxyip',true)">✓
-                        启用</button>
-                    <button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('proxyip',false)">✗
-                        禁用</button>
-                    <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('proxyip')">🗑️
-                        删除</button>
+                    <button class="btn btn-primary btn-sm" onclick="showBatchModal('proxyip')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加</button>
+                    <button class="btn btn-success btn-sm" onclick="batchEnable('proxyip',true)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><polyline points="20 6 9 17 4 12"/></svg>启用</button>
+                    <button class="btn btn-warning btn-sm" onclick="batchEnable('proxyip',false)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>禁用</button>
+                    <button class="btn btn-danger btn-sm" onclick="batchDelete('proxyip')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>删除</button>
                 </div>
             </div>
             <div
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
-                <strong>💡 说明：</strong>ProxyIP(反代IP) 用于普通 IP/域名代理，不支持 SOCKS5/HTTP 协议。如需添加 SOCKS5/HTTP
+                <strong>💡 说明：</strong>ProxyIP (反代IP) 用于普通 IP/域名代理，不支持 SOCKS5/HTTP 协议。如需添加 SOCKS5/HTTP
                 代理，请使用"全局出站"功能。<br>
                 <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 可参与订阅的优选域名数量。<strong
                     style="color:#f14668">不添加反代IP的话，不会生成原生节点。</strong>
@@ -922,20 +1129,16 @@
 
         <div id="outboundPanel" class="panel hidden">
             <div class="panel-header">
-                <h2>全局出站管理</h2>
+                <h2>全局出站管理.</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
                     <button id="toggleMaskBtn" class="btn btn-warning btn-sm" data-icon="�️"
                         onclick="toggleAddressMask()">�️ 显示地址</button>
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('outbound')">➕
-                        添加</button>
-                    <button class="btn btn-success btn-sm" data-icon="✓" onclick="batchEnable('outbound',true)">✓
-                        启用</button>
-                    <button class="btn btn-warning btn-sm" data-icon="✗" onclick="batchEnable('outbound',false)">✗
-                        禁用</button>
-                    <button class="btn btn-success btn-sm" data-icon="🔍" onclick="testAllOutbounds()">🔍 全量测速</button>
-                    <button class="btn btn-primary btn-sm" data-icon="🌍" onclick="checkAllExits()">🌍 出站检测</button>
-                    <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('outbound')">🗑️
-                        删除</button>
+                    <button class="btn btn-primary btn-sm" onclick="showBatchModal('outbound')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加</button>
+                    <button class="btn btn-success btn-sm" onclick="batchEnable('outbound',true)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><polyline points="20 6 9 17 4 12"/></svg>启用</button>
+                    <button class="btn btn-warning btn-sm" onclick="batchEnable('outbound',false)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>禁用</button>
+                    <button class="btn btn-success btn-sm" onclick="testAllOutbounds()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>全量测速</button>
+                    <button class="btn btn-primary btn-sm" onclick="checkAllExits()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>出站检测</button>
+                    <button class="btn btn-danger btn-sm" onclick="batchDelete('outbound')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>删除</button>
                 </div>
             </div>
             <div
@@ -968,28 +1171,27 @@
 
         <div id="cfipPanel" class="panel hidden">
             <div class="panel-header" style="margin-bottom:12px">
-                <h2>CFIP(优选域名) 管理</h2>
+                <h2>CFIP (优选域名) 管理</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center">
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('cfip')">➕ 添加</button>
+                    <button class="btn btn-primary btn-sm" onclick="showBatchModal('cfip')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加</button>
                     <select id="cfipBatchStatus"
-                        style="padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:12px">
+                        style="height:30px;padding:0 8px;border:1px solid #ebebeb;border-radius:4px;font-size:12px;background:#fff;color:#171717;outline:none">
                         <option value="enabled">启用</option>
                         <option value="disabled">禁用</option>
                         <option value="invalid">失效</option>
                     </select>
-                    <button class="btn btn-info btn-sm" data-icon="✓" onclick="batchSetStatus('cfip')">设置状态</button>
+                    <button class="btn btn-info btn-sm" onclick="batchSetStatus('cfip')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><polyline points="20 6 9 17 4 12"/></svg>设置状态</button>
                     <button class="btn btn-danger btn-sm" onclick="batchSetBlacklist('cfip','dns',true)">DNS拉黑</button>
                     <button class="btn btn-success btn-sm" onclick="batchSetBlacklist('cfip','dns',false)">DNS解黑</button>
                     <button class="btn btn-danger btn-sm" onclick="batchSetBlacklist('cfip','node',true)">节点拉黑</button>
                     <button class="btn btn-success btn-sm" onclick="batchSetBlacklist('cfip','node',false)">节点解黑</button>
-                    <button class="btn btn-danger btn-sm" data-icon="🗑️" onclick="batchDelete('cfip')">🗑️ 删除</button>
+                    <button class="btn btn-danger btn-sm" onclick="batchDelete('cfip')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>删除</button>
                     <input type="number" id="cfipDeleteFailCount" min="1" step="1" placeholder="失败≥X"
                         title="删除失败次数大于等于该值的 CFIP"
-                        style="width:76px;padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:12px">
+                        style="width:76px;height:30px;padding:0 8px;border:1px solid #ebebeb;border-radius:4px;font-size:12px;background:#fff;color:#171717;outline:none">
                     <button class="btn btn-danger btn-sm" onclick="batchDeleteCFIPByFailCount()">删除失败≥X</button>
                     <div style="position:relative">
-                        <button class="btn btn-sm" style="background:#f0f0f0;border:1px solid #ddd"
-                            onclick="toggleCFIPSettings(event)">⚙️ 设置</button>
+                        <button class="btn btn-sm btn-secondary" onclick="toggleCFIPSettings(event)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l-.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>设置</button>
                         <div id="cfipSettingsDropdown" class="hidden"
                             style="position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1px solid #e1e8ed;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:12px;z-index:100;min-width:180px">
                             <div
@@ -1022,18 +1224,18 @@
             <!-- Pagination at top -->
             <div
                 style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:10px;background:#f7f9fc;border-radius:8px">
-                <button id="cfipPrevBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">◀ 上一页</button>
+                <button id="cfipPrevBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">上一页</button>
                 <span id="cfipPageInfoTop" style="font-size:13px;color:#666">Page 1 of 1 (Total 0)</span>
                 <div style="display:flex;gap:8px;align-items:center">
                     <button id="cfipNextBtnTop" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页
                         ▶</button>
-                    <button class="btn btn-info btn-sm" onclick="refreshCFIPs()" title="刷新数据">🔄 刷新</button>
+                    <button class="btn btn-secondary btn-sm" onclick="refreshCFIPs()" title="刷新数据"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>刷新</button>
                 </div>
             </div>
             <div
                 style="display:flex;gap:12px;margin-bottom:12px;align-items:center;background:#f7f9fc;padding:8px;border-radius:8px;flex-wrap:wrap">
                 <div style="flex:1;min-width:220px">
-                    <input type="text" placeholder="🔍 搜索 IP / 端口 / 备注..."
+                    <input type="text" placeholder="搜索 IP / 端口 / 备注..."
                         style="width:100%;padding:6px 10px;border:1px solid #e1e8ed;border-radius:6px;font-size:13px"
                         oninput="handleCFIPSearch(event)">
                 </div>
@@ -1078,7 +1280,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#666">
                     每页显示:
-                    <select style="padding:4px 8px;border:1px solid #e1e8ed;border-radius:4px;font-size:13px"
+                    <select style="height:30px;padding:0 8px;border:1px solid #ebebeb;border-radius:4px;font-size:13px;background:#fff;color:#171717;outline:none"
                         onchange="handleCFIPPageSize(event)">
                         <option value="20">20</option>
                         <option value="50">50</option>
@@ -1093,7 +1295,7 @@
             </div>
             <div
                 style="background:#e8f0fe;padding:10px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1967d2">
-                <strong>💡 说明：</strong>CFIP(优选域名) 用于配置 Cloudflare 优选 IP 或域名，作为节点的连接地址。<br>
+                <strong>💡 说明：</strong>CFIP (优选域名) 用于配置 Cloudflare 优选 IP 或域名，作为节点的连接地址。<br>
                 <strong>📊 节点数量计算：</strong>订阅节点数量 = (反代IP数量 + 全局出站数量) × 可参与订阅的优选域名数量。<br>
                 <strong>DNS 黑名单：</strong>被拉黑的 CFIP 会保留在管理列表中，不参与 DNS/CF 同步，内部同步读取会自动顺延下一条可用记录。<br>
                 <strong>节点黑名单：</strong>被拉黑的 CFIP 不参与订阅生成；是否临时包含由订阅配置中的“节点黑名单 CFIP 参与订阅生成”控制。
@@ -1135,18 +1337,17 @@
 
             <div
                 style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:10px;background:#f7f9fc;border-radius:8px">
-                <button id="cfipPrevBtn" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">◀ 上一页</button>
+                <button id="cfipPrevBtn" class="btn btn-primary btn-sm" onclick="changeCFIPPage(-1)">上一页</button>
                 <span id="cfipPageInfo" style="font-size:13px;color:#666">Page 1 of 1 (Total 0)</span>
-                <button id="cfipNextBtn" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页 ▶</button>
+                <button id="cfipNextBtn" class="btn btn-primary btn-sm" onclick="changeCFIPPage(1)">下一页</button>
             </div>
         </div>
 
         <div id="vlSubscribePanel" class="panel hidden">
             <div class="panel-header">
-                <h2>V<span>LESS</span> 订阅配置</h2>
+                <h2>VLESS 订阅配置.</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showSubscribeModal('vl' + 'ess')">➕
-                        添加配置</button>
+                    <button class="btn btn-primary btn-sm" onclick="showSubscribeModal('vless')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加配置</button>
                 </div>
             </div>
 
@@ -1168,10 +1369,9 @@
 
         <div id="ssSubscribePanel" class="panel hidden">
             <div class="panel-header">
-                <h2>Shadowsocks 订阅配置</h2>
+                <h2>Shadowsocks 订阅配置.</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showSubscribeModal('ss')">➕
-                        添加配置</button>
+                    <button class="btn btn-primary btn-sm" onclick="showSubscribeModal('ss')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加配置</button>
                 </div>
             </div>
 
@@ -1193,10 +1393,9 @@
 
         <div id="argoPanel" class="panel hidden">
             <div class="panel-header">
-                <h2>ARGO 优选订阅管理</h2>
+                <h2>ARGO 优选订阅管理.</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                    <button class="btn btn-primary btn-sm" data-icon="➕" onclick="showBatchModal('argo')">➕
-                        添加配置</button>
+                    <button class="btn btn-primary btn-sm" onclick="showBatchModal('argo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加配置</button>
                 </div>
             </div>
 
@@ -1216,7 +1415,7 @@
     <div id="addModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">添加</h3><button class="close-btn" onclick="closeModal()">&times;</button>
+                <h3 id="modalTitle">添加</h3><button class="close-btn" onclick="closeModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="modalBody"></div>
             <button class="btn btn-primary btn-full" style="margin-top:16px" onclick="submitModal()">确定</button>
@@ -1226,7 +1425,7 @@
     <div id="batchModal" class="modal hidden">
         <div class="modal-content" style="max-width:600px">
             <div class="modal-header">
-                <h3 id="batchModalTitle">批量添加</h3><button class="close-btn" onclick="closeBatchModal()">&times;</button>
+                <h3 id="batchModalTitle">批量添加</h3><button class="close-btn" onclick="closeBatchModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="batchAlert"></div>
             <div id="batchHelp"
@@ -1257,19 +1456,19 @@
     <div id="importModeModal" class="modal hidden">
         <div class="modal-content" style="max-width:500px">
             <div class="modal-header">
-                <h3>选择导入模式</h3><button class="close-btn" onclick="closeImportModeModal()">&times;</button>
+                <h3>选择导入模式</h3><button class="close-btn" onclick="closeImportModeModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div style="margin-bottom:20px;font-size:14px;color:#666">
                 <p style="margin-bottom:12px">请选择导入方式：</p>
             </div>
             <button class="btn btn-success" style="width:100%;margin-bottom:12px;padding:16px;text-align:left"
                 onclick="confirmImportMode('append')">
-                <div style="font-size:16px;font-weight:bold;margin-bottom:4px">📥 作为新数据导入</div>
+                <div style="font-size:16px;font-weight:bold;margin-bottom:4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>作为新数据导入</div>
                 <div style="font-size:12px;opacity:0.9">将导入的数据添加到现有数据中，不会删除任何现有数据</div>
             </button>
             <button class="btn btn-danger" style="width:100%;padding:16px;text-align:left"
                 onclick="confirmImportMode('replace')">
-                <div style="font-size:16px;font-weight:bold;margin-bottom:4px">⚠️ 完全覆盖导入</div>
+                <div style="font-size:16px;font-weight:bold;margin-bottom:4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline-icon" style="vertical-align:-2px"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>完全覆盖导入</div>
                 <div style="font-size:12px;opacity:0.9">删除所有现有数据，然后导入新数据（危险操作）</div>
             </button>
         </div>
@@ -1278,7 +1477,7 @@
     <div id="exitDetailModal" class="modal hidden" onclick="if(event.target===this)closeExitDetail()">
         <div class="modal-content-large">
             <div class="modal-header">
-                <h3>出入站详细信息</h3><button class="close-btn" onclick="closeExitDetail()">&times;</button>
+                <h3>出入站详细信息</h3><button class="close-btn" onclick="closeExitDetail()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="exitDetailBody" style="font-size:14px;line-height:1.8"></div>
         </div>
@@ -1287,8 +1486,7 @@
     <div id="clashSettingsModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Clash 订阅设置</h3>
-                <button class="close-btn" onclick="closeClashSettings()">&times;</button>
+                <h3>Clash 订阅设置</h3><button class="close-btn" onclick="closeClashSettings()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="form-group">
                 <label>排除节点 (正则表达式)</label>
@@ -1313,6 +1511,23 @@
     </div>
 
     <script>
+
+        const icons = {
+            edit: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
+            speed: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+            copy: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+            settings: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+            reset: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`,
+            trash: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>`,
+            globe: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+            plus: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+            card: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>`,
+            list: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+            eye: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+            lock: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+            check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><polyline points="20 6 9 17 4 12"/></svg>`
+        };
+
         const API = '/api';
         let apiKey = localStorage.getItem('apiKey'), modalType = '', editId = null;
         let showFullAddress = false; // 是否显示完整地址
@@ -1382,11 +1597,9 @@
             localStorage.setItem('globalViewMode', globalViewMode);
             const btn = document.getElementById('toggleGlobalViewBtn');
             if (globalViewMode === 'card') {
-                btn.textContent = '📋 切换列表';
-                btn.setAttribute('data-icon', '📋');
+                btn.innerHTML = icons.list + ' 切换列表';
             } else {
-                btn.textContent = '📋 切换卡片';
-                btn.setAttribute('data-icon', '📋');
+                btn.innerHTML = icons.card + ' 切换卡片';
             }
             loadProxyIPs();
             loadOutbounds();
@@ -1398,13 +1611,11 @@
             showFullAddress = !showFullAddress;
             const btn = document.getElementById('toggleMaskBtn');
             if (showFullAddress) {
-                btn.textContent = '🔒 隐藏地址';
-                btn.setAttribute('data-icon', '🔒');
+                btn.innerHTML = icons.lock + ' 隐藏地址';
                 btn.classList.remove('btn-warning');
                 btn.classList.add('btn-success');
             } else {
-                btn.textContent = '👁️ 显示地址';
-                btn.setAttribute('data-icon', '👁️');
+                btn.innerHTML = icons.eye + ' 显示地址';
                 btn.classList.remove('btn-success');
                 btn.classList.add('btn-warning');
             }
@@ -1489,11 +1700,9 @@
                 const btn = document.getElementById('toggleGlobalViewBtn');
                 if (btn) {
                     if (globalViewMode === 'card') {
-                        btn.textContent = '📋 切换列表';
-                        btn.setAttribute('data-icon', '📋');
+                        btn.innerHTML = icons.list + ' 切换列表';
                     } else {
-                        btn.textContent = '📋 切换卡片';
-                        btn.setAttribute('data-icon', '📋');
+                        btn.innerHTML = icons.card + ' 切换卡片';
                     }
                 }
             } finally {
@@ -1585,13 +1794,13 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
 </div>
 </div>
 <div class="card-actions">
-<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
-<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
-<button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
-<button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('vl',${item.id})">✏️ 编辑</button>
-<button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">🔄 重置Token</button>
+<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">${icons.copy}复制订阅</button>
+<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">${icons.copy}复制Clash订阅</button>
+<button class="btn btn-info btn-sm" onclick="showClashSettings()">${icons.settings}转换设置</button>
+<button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('vl',${item.id})">${icons.edit}编辑</button>
+<button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">${icons.reset}重置Token</button>
 <button class="btn btn-${item.enabled ? 'secondary' : 'success'} btn-sm" onclick="toggleSubscribeEnable(${item.id},${!item.enabled})">${item.enabled ? '禁用' : '启用'}</button>
-<button class="btn btn-danger btn-sm" onclick="deleteSubscribeConfig(${item.id})">🗑️ 删除</button>
+<button class="btn btn-danger btn-sm" onclick="deleteSubscribeConfig(${item.id})">${icons.trash}删除</button>
 </div>
 </div>
 `;
@@ -1633,13 +1842,13 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
 </div>
 </div>
 <div class="card-actions">
-<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
-<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
-<button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
-<button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('ss',${item.id})">✏️ 编辑</button>
-<button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">🔄 重置Token</button>
+<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">${icons.copy}复制订阅</button>
+<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">${icons.copy}复制Clash订阅</button>
+<button class="btn btn-info btn-sm" onclick="showClashSettings()">${icons.settings}转换设置</button>
+<button class="btn btn-warning btn-sm" onclick="editSubscribeConfig('ss',${item.id})">${icons.edit}编辑</button>
+<button class="btn btn-info btn-sm" onclick="resetSubscribeToken(${item.id})">${icons.reset}重置Token</button>
 <button class="btn btn-${item.enabled ? 'secondary' : 'success'} btn-sm" onclick="toggleSubscribeEnable(${item.id},${!item.enabled})">${item.enabled ? '禁用' : '启用'}</button>
-<button class="btn btn-danger btn-sm" onclick="deleteSubscribeConfig(${item.id})">🗑️ 删除</button>
+<button class="btn btn-danger btn-sm" onclick="deleteSubscribeConfig(${item.id})">${icons.trash}删除</button>
 </div>
 </div>
 `;
@@ -1685,14 +1894,14 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
 </div>
 </div>
 <div class="card-actions">
-<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">📋 复制订阅</button>
-<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">📋 复制Clash订阅</button>
-<button class="btn btn-info btn-sm" onclick="showClashSettings()">⚙️ 转换设置</button>
-<button class="btn btn-warning btn-sm" onclick="editArgo(${item.id})">✏️ 编辑</button>
+<button class="btn btn-success btn-sm" onclick="copyText('${subUrl}')">${icons.copy}复制订阅</button>
+<button class="btn btn-success btn-sm" onclick="copyClashSub('${subUrl}')">${icons.copy}复制Clash订阅</button>
+<button class="btn btn-info btn-sm" onclick="showClashSettings()">${icons.settings}转换设置</button>
+<button class="btn btn-warning btn-sm" onclick="editArgo(${item.id})">${icons.edit}编辑</button>
 <button class="btn btn-${includeBlacklisted ? 'warning' : 'success'} btn-sm" onclick="toggleArgoIncludeBlacklisted(${item.id},${includeBlacklisted ? 0 : 1})">${includeBlacklisted ? '排除节点黑名单' : '包含节点黑名单'}</button>
-<button class="btn btn-info btn-sm" onclick="resetArgoToken(${item.id})">🔄 重置Token</button>
+<button class="btn btn-info btn-sm" onclick="resetArgoToken(${item.id})">${icons.reset}重置Token</button>
 <button class="btn btn-${item.enabled ? 'secondary' : 'success'} btn-sm" onclick="toggleArgoEnable(${item.id},${!item.enabled})">${item.enabled ? '禁用' : '启用'}</button>
-<button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">🗑️ 删除</button>
+<button class="btn btn-danger btn-sm" onclick="deleteArgo(${item.id})">${icons.trash}删除</button>
 </div>
 </div>
 `;
@@ -1701,9 +1910,9 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
 
         function copyText(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('✅ 已复制到剪贴板');
+                alert('已复制到剪贴板');
             }).catch(err => {
-                alert('❌ 复制失败：' + err.message);
+                alert('复制失败：' + err.message);
             });
         }
 
@@ -1829,7 +2038,7 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
 <td data-label="延迟" id="out-lat-${i.id}" style="color:#999">-</td>
 <td data-label="状态"><label class="switch"><input type="checkbox" ${i.enabled ? 'checked' : ''} onchange="toggle('outbound',${i.id},this.checked)"><span class="slider"></span></label></td>
 <td data-label="操作" class="actions">
-<button class="btn btn-success btn-sm" data-icon="⚡" onclick="testSingleOutbound(${i.id})">⚡ 测速</button>
+<button class="btn btn-success btn-sm" onclick="testSingleOutbound(${i.id})">${icons.speed}测速</button>
 <button class="btn btn-warning btn-sm" data-icon="✏️" onclick="editItem('outbound',${i.id},'${i.address.replace(/'/g, "\\\\'")}','${(i.remark || '').replace(/'/g, "\\\\'")}')">✏️ 编辑</button>
 </td></tr>`;
                 }).join('');
@@ -1863,7 +2072,7 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
 </div>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-<div class="card-latency unknown" id="out-lat-card-${i.id}" onclick="testSingleOutbound(${i.id})" style="margin:0;font-size:24px;cursor:pointer;user-select:none;line-height:1" title="点击测速">⚡</div>
+<div class="card-latency unknown" id="out-lat-card-${i.id}" onclick="testSingleOutbound(${i.id})" style="margin:0;font-size:18px;cursor:pointer;user-select:none;line-height:1;display:flex;align-items:center;justify-content:center;border:1px solid #ebebeb;width:32px;height:32px;border-radius:4px" title="点击测速">${icons.speed}</div>
 <div style="display:flex;gap:12px;align-items:center">
 <span onclick="editItem('outbound',${i.id},'${i.address.replace(/'/g, "\\\\'")}','${(i.remark || '').replace(/'/g, "\\\\'")}')" style="color:#667eea;cursor:pointer;font-size:13px;user-select:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">✏️ 编辑</span>
 <label class="switch" style="margin:0">
@@ -2641,7 +2850,7 @@ ${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</
             modalType = type;
             editId = id;
             const isEdit = id !== null;
-            const titles = { 'proxyip': 'ProxyIP(反代IP)', 'outbound': '全局出站', 'cfip': 'CFIP(优选域名)' };
+            const titles = { 'proxyip': 'ProxyIP (反代IP)', 'outbound': '全局出站', 'cfip': 'CFIP (优选域名)' };
             document.getElementById('modalTitle').textContent = (isEdit ? '编辑' : '添加') + titles[type];
             if (type === 'proxyip') {
                 document.getElementById('modalBody').innerHTML = `<div class="form-group"><label>地址</label><input type="text" id="mAddr" value="${addr}" placeholder="IP/域名"></div>
@@ -3152,7 +3361,7 @@ ${isVl ? `<div class="form-group">
         let batchType = '';
         function showBatchModal(type) {
             batchType = type;
-            const titles = { 'proxyip': 'ProxyIP(反代IP)', 'outbound': '全局出站', 'cfip': 'CFIP(优选域名)', 'argo': 'ARGO 订阅' };
+            const titles = { 'proxyip': 'ProxyIP (反代IP)', 'outbound': '全局出站', 'cfip': 'CFIP (优选域名)', 'argo': 'ARGO 订阅' };
             document.getElementById('batchModalTitle').textContent = '批量添加 ' + titles[type];
             document.getElementById('batchInput').value = '';
             document.getElementById('batchAlert').innerHTML = '';

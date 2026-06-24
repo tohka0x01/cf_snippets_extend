@@ -34,3 +34,5 @@ cfst_data/
 .codex
 .claude
 openspec
+/.venv
+.agent
