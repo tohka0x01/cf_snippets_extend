@@ -292,6 +292,7 @@ function parseSmartNodeCounts(urlParams) {
     return {
         topSpeedCount: parseSmartNodeCount(urlParams.get('speedTop')),
         topLatencyCount: parseSmartNodeCount(urlParams.get('latencyTop')),
+        extraCount: parseSmartNodeCount(urlParams.get('extraCount')),
     };
 }
 
@@ -1596,7 +1597,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     const proxyipIds = urlParams.get('proxyip')?.split(',').filter(id => id.trim()) || [];
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
-    const { topSpeedCount, topLatencyCount } = parseSmartNodeCounts(urlParams);
+    const { topSpeedCount, topLatencyCount, extraCount } = parseSmartNodeCounts(urlParams);
     const enableSmartNode = topSpeedCount > 0 || topLatencyCount > 0;
 
     // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
@@ -1772,6 +1773,31 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
         links.unshift(...smartLinks);
     }
 
+    // 处理 extraCount 参数：额外展示订阅数量
+    // extraCount = 0: 不展示额外订阅（只保留智能节点）
+    // extraCount > 0: 保留智能节点 + extraCount 条额外订阅
+    // 如果 extraCount 大于实际订阅数量，则按实际数量为准
+    if (extraCount === 0 && enableSmartNode) {
+        // 只保留智能节点，移除所有其他订阅
+        const smartNodeCount = (topSpeedCount > 0 ? topSpeedCount : 0) + (topLatencyCount > 0 ? topLatencyCount : 0);
+        const multiplier = allProxies.length > 0 ? allProxies.length : 1;
+        const totalSmartNodes = smartNodeCount * multiplier;
+        return new Response(btoa(unescape(encodeURIComponent(links.slice(0, totalSmartNodes).join('\n')))), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+        });
+    } else if (extraCount > 0 && enableSmartNode) {
+        // 保留智能节点 + extraCount 条额外订阅
+        const smartNodeCount = (topSpeedCount > 0 ? topSpeedCount : 0) + (topLatencyCount > 0 ? topLatencyCount : 0);
+        const multiplier = allProxies.length > 0 ? allProxies.length : 1;
+        const totalSmartNodes = smartNodeCount * multiplier;
+        // 额外订阅数量不能超过实际订阅数量
+        const actualExtraCount = Math.min(extraCount, links.length - totalSmartNodes);
+        const finalLinks = links.slice(0, totalSmartNodes + actualExtraCount);
+        return new Response(btoa(unescape(encodeURIComponent(finalLinks.join('\n')))), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+        });
+    }
+
     return new Response(btoa(unescape(encodeURIComponent(links.join('\n')))), {
         headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
     });
@@ -1790,7 +1816,7 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
     const proxyipIds = urlParams.get('proxyip')?.split(',').filter(id => id.trim()) || [];
     const outboundIds = urlParams.get('outbound')?.split(',').filter(id => id.trim()) || [];
     const cfipIds = urlParams.get('cfip')?.split(',').filter(id => id.trim()) || [];
-    const { topSpeedCount, topLatencyCount } = parseSmartNodeCounts(urlParams);
+    const { topSpeedCount, topLatencyCount, extraCount } = parseSmartNodeCounts(urlParams);
     const enableSmartNode = topSpeedCount > 0 || topLatencyCount > 0;
 
     // cfipStatus 参数用于按状态筛选: enabled, disabled, invalid
@@ -1945,6 +1971,31 @@ async function handleSSSubscribe(db, password, url, configParam = null) {
             }
         }
         links.unshift(...smartLinks);
+    }
+
+    // 处理 extraCount 参数：额外展示订阅数量
+    // extraCount = 0: 不展示额外订阅（只保留智能节点）
+    // extraCount > 0: 保留智能节点 + extraCount 条额外订阅
+    // 如果 extraCount 大于实际订阅数量，则按实际数量为准
+    if (extraCount === 0 && enableSmartNode) {
+        // 只保留智能节点，移除所有其他订阅
+        const smartNodeCount = (topSpeedCount > 0 ? topSpeedCount : 0) + (topLatencyCount > 0 ? topLatencyCount : 0);
+        const multiplier = allProxies.length > 0 ? allProxies.length : 1;
+        const totalSmartNodes = smartNodeCount * multiplier;
+        return new Response(btoa(unescape(encodeURIComponent(links.slice(0, totalSmartNodes).join('\n')))), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+        });
+    } else if (extraCount > 0 && enableSmartNode) {
+        // 保留智能节点 + extraCount 条额外订阅
+        const smartNodeCount = (topSpeedCount > 0 ? topSpeedCount : 0) + (topLatencyCount > 0 ? topLatencyCount : 0);
+        const multiplier = allProxies.length > 0 ? allProxies.length : 1;
+        const totalSmartNodes = smartNodeCount * multiplier;
+        // 额外订阅数量不能超过实际订阅数量
+        const actualExtraCount = Math.min(extraCount, links.length - totalSmartNodes);
+        const finalLinks = links.slice(0, totalSmartNodes + actualExtraCount);
+        return new Response(btoa(unescape(encodeURIComponent(finalLinks.join('\n')))), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }
+        });
     }
 
     return new Response(btoa(unescape(encodeURIComponent(links.join('\n')))), {

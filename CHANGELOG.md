@@ -4,6 +4,12 @@
 
 ### 新增
 
+- VLESS 订阅和 SS 订阅支持 `extraCount` 参数，控制除智能节点（speedTop、latencyTop）外额外展示的订阅数量。
+  - `extraCount=0`：仅展示智能节点，不展示其他订阅。
+  - `extraCount=N`（N>0）：展示智能节点 + N 条额外订阅。
+  - 如果配置的 `extraCount` 大于实际订阅数量，则按实际数量为准。
+  - 示例：`/sub/token/{token}?speedTop=2&latencyTop=2&extraCount=10` - 展示 2 个最大速度 + 2 个最低延迟 + 10 条额外订阅。
+  - 示例：`/sub/token/{token}?speedTop=3&extraCount=0` - 仅展示 3 个最大速度节点，不展示其他订阅。
 - VLESS 订阅配置新增**路径格式选择**功能，支持默认格式和简洁格式。
 - 简洁格式支持**全局模式**和**仅代理模式**切换：
   - **全局模式**（默认）：所有流量通过代理
@@ -20,6 +26,8 @@
 
 ### 变更
 
+- `parseSmartNodeCounts` 函数新增 `extraCount` 参数解析。
+- VLESS 订阅（`handleSubscribe`）和 SS 订阅（`handleSSSubscribe`）支持 `extraCount` 参数控制。
 - `subscribe_config` 表新增 `path_format` 字段（TEXT，默认值 'default'）。
 - `subscribe_config` 表新增 `compact_global_mode` 字段（INTEGER，默认值 1，表示全局模式）。
 - 订阅配置新增和更新 API 支持 `pathFormat` 和 `compactGlobalMode` 参数。
@@ -27,6 +35,8 @@
 
 ### 兼容性
 
+- 未指定 `extraCount` 参数时，行为保持不变，展示所有订阅。
+- 仅在同时指定 `speedTop` 或 `latencyTop`（智能节点）时，`extraCount` 参数才生效。
 - 现有订阅配置自动使用默认格式（`path_format = 'default'`）。
 - 简洁格式配置默认使用全局模式（`compact_global_mode = 1`）。
 - 不影响已有订阅的正常使用。

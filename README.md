@@ -388,8 +388,13 @@
 - `proxyip`：指定ProxyIP的ID，多个ID用逗号分隔
 - `outbound`：指定全局出站的ID，多个ID用逗号分隔
 - `cfip`：指定CFIP的ID，多个ID用逗号分隔
-- `speedTop`：在订阅最前面追加“最大速度”节点的数量
-- `latencyTop`：在订阅最前面追加“最低延迟”节点的数量
+- `speedTop`：在订阅最前面追加”最大速度”节点的数量
+- `latencyTop`：在订阅最前面追加”最低延迟”节点的数量
+- `extraCount`：除智能节点外额外展示的订阅数量（配合 `speedTop` 或 `latencyTop` 使用）
+  - `extraCount=0`：仅展示智能节点，不展示其他订阅
+  - `extraCount=N`（N>0）：展示智能节点 + N 条额外订阅
+  - 如果配置的数量大于实际订阅数量，则按实际数量为准
+  - 未指定时，展示所有订阅（默认行为）
 - `speedTop` 和 `latencyTop` 只会从 IP 类型的 CFIP 中挑选，自动排除域名类型
 
 **使用示例：**
@@ -435,6 +440,18 @@
    https://你的Pages域名/sub/你的UUID?speedTop=5&latencyTop=2
    ```
    在订阅最前面追加 5 个最大速度节点和 2 个最低延迟节点
+
+8. **智能节点 + 额外订阅数量控制**：
+   ```
+   https://你的Pages域名/sub/你的UUID?speedTop=3&latencyTop=2&extraCount=10
+   ```
+   在订阅最前面追加 3 个最大速度节点和 2 个最低延迟节点，然后追加 10 条额外订阅
+
+9. **仅展示智能节点**：
+   ```
+   https://你的Pages域名/sub/你的UUID?speedTop=5&extraCount=0
+   ```
+   仅展示 5 个最大速度节点，不展示其他订阅
 
 **SS订阅同样支持：**
 ```
