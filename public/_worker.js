@@ -76,6 +76,7 @@ async function initDB(db) {
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN include_blacklisted_cfip INTEGER DEFAULT 0`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN created_at TEXT`).run().catch(() => { });
         await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN path_format TEXT DEFAULT 'default'`).run().catch(() => { });
+        await db.prepare(`ALTER TABLE subscribe_config ADD COLUMN compact_global_mode INTEGER DEFAULT 1`).run().catch(() => { });
 
         // 为所有没有 token 的配置生成 token
         const { results: noTokenConfigs } = await db.prepare('SELECT id FROM subscribe_config WHERE token IS NULL').all();
@@ -1357,7 +1358,7 @@ async function handleGetSubscribeConfigs(db, type) {
 
 async function handleAddSubscribeConfig(request, db) {
     const body = await request.json();
-    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0, pathFormat = 'default' } = body;
+    const { type, uuid, snippetsDomain, proxyPath, remark, enabled = true, sort_order = 0, pathFormat = 'default', compactGlobalMode = 1 } = body;
     const includeBlacklistedCfip = getIncludeBlacklistedCfipValue(body);
 
     if (!type || !uuid || !snippetsDomain) {
@@ -1378,8 +1379,8 @@ async function handleAddSubscribeConfig(request, db) {
     const token = generateToken();
 
     const r = await db.prepare(
-        'INSERT INTO subscribe_config (type, token, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, include_blacklisted_cfip, path_format, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
-    ).bind(type, token, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order, includeBlacklistedCfip, pathFormat).run();
+        'INSERT INTO subscribe_config (type, token, uuid, snippets_domain, proxy_path, remark, enabled, sort_order, include_blacklisted_cfip, path_format, compact_global_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+    ).bind(type, token, uuid, domain, finalPath, finalRemark, enabled ? 1 : 0, sort_order, includeBlacklistedCfip, pathFormat, compactGlobalMode ? 1 : 0).run();
 
     return json({ success: true, data: { id: r.meta.last_row_id, token } });
 }
@@ -1400,6 +1401,7 @@ async function handleUpdateSubscribeConfig(request, db, id) {
     if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
     if (body.include_blacklisted_cfip !== undefined || body.includeBlacklistedCfip !== undefined) { sets.push('include_blacklisted_cfip = ?'); vals.push(getIncludeBlacklistedCfipValue(body)); }
     if (body.pathFormat !== undefined) { sets.push('path_format = ?'); vals.push(body.pathFormat); }
+    if (body.compactGlobalMode !== undefined) { sets.push('compact_global_mode = ?'); vals.push(body.compactGlobalMode ? 1 : 0); }
 
     if (sets.length === 0) return json({ error: '没有要更新的字段' }, 400);
 
@@ -1648,6 +1650,7 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
     const proxyPath = config.proxy_path || '/?ed=2560';
     const configRemark = config.remark || 'V<span>LESS</span>';
     const pathFormat = config.path_format || 'default';
+    const compactGlobalMode = config.compact_global_mode !== undefined ? config.compact_global_mode : 1;
 
     // 合并 ProxyIP 和 Outbound
     const allProxies = [...proxyips, ...outbounds];
@@ -1668,7 +1671,9 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
                     // 提取查询参数（如果有）
                     const queryMatch = baseProxyPath.match(/\?(.+)$/);
                     const query = queryMatch ? queryMatch[1] : 'ed=2560';
-                    return `/s=${addrPart}?${query}`;
+                    // 根据 compactGlobalMode 选择 /s= 或 /g=
+                    const prefix = compactGlobalMode ? '/g=' : '/s=';
+                    return `${prefix}${addrPart}?${query}`;
                 }
             } else if (type === 'http' || type === 'https') {
                 // http://user:pass@host:port 或 http://host:port
@@ -1677,7 +1682,9 @@ async function handleSubscribe(db, uuid, url, configParam = null) {
                     const addrPart = match[1];
                     const queryMatch = baseProxyPath.match(/\?(.+)$/);
                     const query = queryMatch ? queryMatch[1] : 'ed=2560';
-                    return `/h=${addrPart}?${query}`;
+                    // 根据 compactGlobalMode 选择 /h= 或 /gh=
+                    const prefix = compactGlobalMode ? '/gh=' : '/h=';
+                    return `${prefix}${addrPart}?${query}`;
                 }
             } else {
                 // ProxyIP（普通 IP/域名）

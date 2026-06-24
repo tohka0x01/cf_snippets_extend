@@ -1562,6 +1562,8 @@
                     'compact': '简洁格式 (/s=xxx或/p=xxx)'
                 };
                 const formatText = formatLabels[pathFormat] || formatLabels['default'];
+                const compactGlobalMode = item.compact_global_mode !== undefined ? item.compact_global_mode : 1;
+                const globalModeText = compactGlobalMode ? '全局模式 (/g=, /gh=)' : '仅代理模式 (/s=, /h=)';
                 return `
 <div class="outbound-card ${statusClass}" style="margin-bottom:16px">
 <div class="card-header">
@@ -1575,6 +1577,7 @@
 <div class="card-info-row"><strong>域名:</strong> ${item.snippets_domain}</div>
 <div class="card-info-row"><strong>路径:</strong> ${item.proxy_path || '/?ed=2560'}</div>
 <div class="card-info-row"><strong>路径格式:</strong> ${formatText}</div>
+${pathFormat === 'compact' ? `<div class="card-info-row"><strong>代理模式:</strong> ${globalModeText}</div>` : ''}
 <div class="card-info-row"><strong>节点黑名单:</strong> ${includeBlacklisted ? '参与订阅生成' : '不参与订阅生成'}</div>
 <div class="card-info-row">
 <strong>订阅地址:</strong>
@@ -2661,6 +2664,14 @@
 
         function closeModal() { document.getElementById('addModal').classList.add('hidden'); editId = null }
 
+        function toggleCompactGlobalMode() {
+            const pathFormat = document.getElementById('subPathFormat')?.value;
+            const group = document.getElementById('compactGlobalModeGroup');
+            if (group) {
+                group.style.display = pathFormat === 'compact' ? 'block' : 'none';
+            }
+        }
+
         async function submitModal() {
             if (modalType === 'subscribe') {
                 const type = document.getElementById('subscribeType').value;
@@ -2670,6 +2681,8 @@
                 const includeBlacklistedCfip = document.getElementById('subIncludeBlacklisted').checked ? 1 : 0;
                 const pathFormatElement = document.getElementById('subPathFormat');
                 const pathFormat = pathFormatElement ? pathFormatElement.value : 'default';
+                const compactGlobalModeElement = document.getElementById('subCompactGlobalMode');
+                const compactGlobalMode = compactGlobalModeElement ? parseInt(compactGlobalModeElement.value) : 1;
 
                 if (!uuid || !domain) return alert('请填写必填项');
 
@@ -2678,7 +2691,7 @@
                 // SS 默认 /uuid
                 const path = type === 'ss' ? '/' + uuid : '/?ed=2560';
 
-                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined, includeBlacklistedCfip, pathFormat };
+                const body = { type, uuid, snippetsDomain: domain, proxyPath: path, remark: remark || undefined, includeBlacklistedCfip, pathFormat, compactGlobalMode };
                 const method = editId ? 'PUT' : 'POST';
                 const apiPath = editId ? `/subscribe/config/${editId}` : '/subscribe/config';
 
@@ -2758,7 +2771,7 @@
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" placeholder="your-worker.workers.dev"></div>
 ${isVl ? `<div class="form-group">
 <label>路径格式</label>
-<select id="subPathFormat">
+<select id="subPathFormat" onchange="toggleCompactGlobalMode()">
 <option value="default">默认格式 (?ed=2560&proxyip=xxx)</option>
 <option value="compact">简洁格式 (/s=xxx或/p=xxx)</option>
 </select>
@@ -2769,6 +2782,17 @@ ${isVl ? `<div class="form-group">
 • /p=ProxyIP.domain.com?ed=2560 (仅Proxyip)<br>
 • /h=host:port?ed=2560 (回退http)<br>
 • /gh=host:port?ed=2560 (全局http)
+</div>
+</div>
+<div class="form-group" id="compactGlobalModeGroup" style="display:none">
+<label>代理模式</label>
+<select id="subCompactGlobalMode">
+<option value="1">全局模式 (/g=, /gh=)</option>
+<option value="0">仅代理模式 (/s=, /h=)</option>
+</select>
+<div style="font-size:12px;color:#666;margin-top:6px;line-height:1.5">
+<strong>全局模式</strong>：所有流量都通过代理（/g=, /gh=）<br>
+<strong>仅代理模式</strong>：仅特定流量通过代理（/s=, /h=）
 </div>
 </div>` : ''}
 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted"> 节点黑名单 CFIP 参与订阅生成</label>
@@ -2789,6 +2813,7 @@ ${isVl ? `<div class="form-group">
             const label = type === 'vl' ? 'UUID' : '密码';
             const isVl = type === 'vl' || cfg === 'vl' + 'ess';
             const pathFormat = item.path_format || 'default';
+            const compactGlobalMode = item.compact_global_mode !== undefined ? item.compact_global_mode : 1;
             document.getElementById('modalBody').innerHTML = `
 <input type="hidden" id="subscribeType" value="${cfg}">
 <div class="form-group"><label>备注</label><input type="text" id="subRemark" value="${item.remark || ''}"></div>
@@ -2796,7 +2821,7 @@ ${isVl ? `<div class="form-group">
 <div class="form-group"><label>Snippets/Worker 域名</label><input type="text" id="subDomain" value="${item.snippets_domain}"></div>
 ${isVl ? `<div class="form-group">
 <label>路径格式</label>
-<select id="subPathFormat">
+<select id="subPathFormat" onchange="toggleCompactGlobalMode()">
 <option value="default" ${pathFormat === 'default' ? 'selected' : ''}>默认格式 (?ed=2560&proxyip=xxx)</option>
 <option value="compact" ${pathFormat === 'compact' ? 'selected' : ''}>简洁格式 (/s=xxx或/p=xxx)</option>
 </select>
@@ -2807,6 +2832,17 @@ ${isVl ? `<div class="form-group">
 • /p=ProxyIP.domain.com?ed=2560 (仅Proxyip)<br>
 • /h=host:port?ed=2560 (回退http)<br>
 • /gh=host:port?ed=2560 (全局http)
+</div>
+</div>
+<div class="form-group" id="compactGlobalModeGroup" style="display:${pathFormat === 'compact' ? 'block' : 'none'}">
+<label>代理模式</label>
+<select id="subCompactGlobalMode">
+<option value="1" ${compactGlobalMode == 1 ? 'selected' : ''}>全局模式 (/g=, /gh=)</option>
+<option value="0" ${compactGlobalMode == 0 ? 'selected' : ''}>仅代理模式 (/s=, /h=)</option>
+</select>
+<div style="font-size:12px;color:#666;margin-top:6px;line-height:1.5">
+<strong>全局模式</strong>：所有流量都通过代理（/g=, /gh=）<br>
+<strong>仅代理模式</strong>：仅特定流量通过代理（/s=, /h=）
 </div>
 </div>` : ''}
 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555"><input type="checkbox" id="subIncludeBlacklisted" ${Number(item.include_blacklisted_cfip) === 1 ? 'checked' : ''}> 节点黑名单 CFIP 参与订阅生成</label>
