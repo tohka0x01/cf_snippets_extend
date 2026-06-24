@@ -49,6 +49,8 @@
 
 ### 4️⃣ 订阅生成
 - **VLESS 订阅**：一键生成 VLESS 协议订阅链接
+  - 支持**路径格式选择**：默认格式和简洁格式
+  - 简洁格式支持多种代理类型：`/s=`（SOCKS5）、`/p=`（ProxyIP）、`/h=`（HTTP）等
 - **Shadowsocks 订阅**：一键生成 SS 协议订阅链接
 - **ARGO 优选订阅**：支持通过 ARGO 隧道模板生成优选订阅
   - 支持 VLESS 和 VMess 模板解析
@@ -301,11 +303,24 @@
 1. 填写 **UUID** : 使用已经部署的老王订阅的UUID
 2. 填写 **Snippets/Worker 域名**: 使用已经部署的老王订阅的域名
 3. 填写 **Path**（默认：`/?ed=2560`）
-4. 点击 **💾 保存并生成订阅**
+4. **选择路径格式**（新功能）：
+   - **默认格式**：传统的 URL 查询参数格式 `/?ed=2560&proxyip=xxx`
+   - **简洁格式**：更简洁的路径参数格式
+     - `/s=user:pass@host:port?ed=2560` - 仅 SOCKS5 代理
+     - `/g=user:pass@host:port?ed=2560` - 全局 SOCKS5 代理
+     - `/p=ProxyIP.domain.com?ed=2560` - 仅 ProxyIP
+     - `/h=host:port?ed=2560` - 回退 HTTP 代理
+     - `/gh=host:port?ed=2560` - 全局 HTTP 代理
+5. 点击 **💾 保存并生成订阅**
 
 生成后会显示：
 - **订阅地址**（格式：`https://你的Pages域名/sub/你的UUID`，例如：`https://cf-snippets-extend.pages.dev/sub/你的UUID`）
 - **Clash 订阅地址**（自动转换为 Clash 格式）
+
+**路径格式说明**：
+- 简洁格式可以让订阅链接更短，便于分享和管理
+- 后端会根据代理类型自动选择对应的格式前缀
+- 现有订阅默认使用传统格式，不影响已有节点
 
 #### Shadowsocks 订阅
 
